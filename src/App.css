@@ -1,0 +1,132 @@
+.app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg);
+  color: var(--text);
+  cursor: text;
+}
+
+.editor-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding-top: 45vh;
+  padding-bottom: 45vh;
+  box-sizing: border-box;
+}
+
+.editor-wrapper {
+  width: 55%;
+  max-width: 720px;
+  min-width: 320px;
+}
+
+/* Milkdown editor styling */
+.editor-wrapper .milkdown {
+  outline: none;
+  font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 18px;
+  line-height: 1.9;
+  color: var(--text);
+  font-feature-settings: 'palt' 1;
+  line-break: strict;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.editor-wrapper .milkdown .editor {
+  outline: none;
+}
+
+.editor-wrapper .milkdown [contenteditable] {
+  outline: none;
+  caret-color: var(--text);
+}
+
+/* ProseMirror styles */
+.editor-wrapper .ProseMirror {
+  outline: none !important;
+  white-space: pre-wrap;
+}
+
+.editor-wrapper .ProseMirror p {
+  margin: 0.5em 0;
+}
+
+.editor-wrapper .ProseMirror h1 {
+  font-size: 1.6em;
+  font-weight: 600;
+  margin: 1em 0 0.5em;
+  color: var(--text);
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
+.editor-wrapper .ProseMirror h2 {
+  font-size: 1.3em;
+  font-weight: 600;
+  margin: 0.8em 0 0.4em;
+  color: var(--text);
+  font-family: inherit;
+  letter-spacing: normal;
+}
+
+.editor-wrapper .ProseMirror h3 {
+  font-size: 1.1em;
+  font-weight: 600;
+  margin: 0.6em 0 0.3em;
+  color: var(--text);
+}
+
+.editor-wrapper .ProseMirror strong {
+  font-weight: 700;
+}
+
+.editor-wrapper .ProseMirror em {
+  font-style: italic;
+}
+
+.editor-wrapper .ProseMirror del {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.editor-wrapper .ProseMirror blockquote {
+  border-left: 3px solid var(--text-muted);
+  margin: 0.8em 0;
+  padding-left: 1em;
+  color: var(--text-muted);
+}
+
+.editor-wrapper .ProseMirror code {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 0.9em;
+  background: rgba(128, 128, 128, 0.1);
+  padding: 0.15em 0.3em;
+  border-radius: 3px;
+}
+
+.editor-wrapper .ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--text-muted);
+  margin: 1.5em 0;
+}
+
+/* Word count */
+.word-count {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
