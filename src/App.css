@@ -55,11 +55,17 @@
   outline: none !important;
   white-space: pre-wrap;
   min-height: 1em;
+  line-height: 1.8;
 }
 
 .editor-wrapper .ProseMirror p {
-  margin: 0.3em 0;
-  line-height: 1.8;
+  margin: 0;
+}
+
+/* Custom selection highlight via ProseMirror decoration */
+.sate-selection {
+  background-color: #555048;
+  border-radius: 1px;
 }
 
 .editor-wrapper .ProseMirror h1 {

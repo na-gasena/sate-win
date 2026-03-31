@@ -29,12 +29,6 @@ html, body {
   height: 100%;
 }
 
-::selection {
-  background-color: #ffffff;
-  color: #1a1a18;
-}
-
-
 /* Hide scrollbar but keep functionality */
 ::-webkit-scrollbar {
   width: 0;
