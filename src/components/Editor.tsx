@@ -7,10 +7,26 @@ import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
 import { $prose } from '@milkdown/utils';
 import { Plugin, PluginKey } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
+import { splitBlock } from '@milkdown/prose/commands';
 
 interface EditorComponentProps {
   onChange: (markdown: string) => void;
 }
+
+// Shift+Enter を通常のEnter（段落分割）と同じにする
+const shiftEnterAsSplitPlugin = $prose(() => {
+  return new Plugin({
+    key: new PluginKey('shift-enter-as-split'),
+    props: {
+      handleKeyDown(view, event) {
+        if (event.key === 'Enter' && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          return splitBlock(view.state, view.dispatch);
+        }
+        return false;
+      },
+    },
+  });
+});
 
 // テキスト選択のハイライトをカスタムデコレーションで描画
 const selectionHighlightPlugin = $prose(() => {
@@ -46,6 +62,7 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
       })
       .use(commonmark)
       .use(listener)
+      .use(shiftEnterAsSplitPlugin)
       .use(selectionHighlightPlugin)
       .config((ctx) => {
         ctx.set(codeBlockKeymap.key, {
