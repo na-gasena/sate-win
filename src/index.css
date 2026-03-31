@@ -30,13 +30,23 @@ html, body {
 }
 
 ::selection {
-  background: #888078 !important;
-  color: #1a1a18 !important;
+  background-color: #888078;
+  color: #1a1a18;
 }
 
 *::selection {
-  background: #888078 !important;
-  color: #1a1a18 !important;
+  background-color: #888078;
+  color: #1a1a18;
+}
+
+::-moz-selection {
+  background-color: #888078;
+  color: #1a1a18;
+}
+
+*::-moz-selection {
+  background-color: #888078;
+  color: #1a1a18;
 }
 
 /* Hide scrollbar but keep functionality */
