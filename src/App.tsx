@@ -15,7 +15,7 @@ function App() {
     <div className="app">
       <div className="editor-container">
         <div className="editor-wrapper">
-          <EditorComponent defaultValue={content} onChange={updateContent} />
+          <EditorComponent onChange={updateContent} />
         </div>
       </div>
       <WordCount count={charCount} />

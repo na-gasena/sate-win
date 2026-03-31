@@ -1,41 +1,48 @@
-import { useEffect } from 'react';
+import { useCallback, useRef } from 'react';
 import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core';
 import { commonmark } from '@milkdown/preset-commonmark';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
-import { useEditor, Milkdown } from '@milkdown/react';
+import { useEditor, Milkdown, MilkdownProvider } from '@milkdown/react';
 import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
 
 interface EditorComponentProps {
-  defaultValue: string;
   onChange: (markdown: string) => void;
 }
 
-function MilkdownEditor({ defaultValue, onChange }: EditorComponentProps) {
+function MilkdownEditor({ onChange }: EditorComponentProps) {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   const { get } = useEditor((root) =>
     Editor.make()
       .config((ctx) => {
         ctx.set(rootCtx, root);
-        ctx.set(defaultValueCtx, defaultValue);
+        ctx.set(defaultValueCtx, '');
         ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
-          onChange(markdown);
+          onChangeRef.current(markdown);
         });
       })
       .use(commonmark)
-      .use(listener)
+      .use(listener),
+    []
   );
 
-  // Keep reference for potential future use
-  useEffect(() => {
+  // Trigger editor creation
+  const editorRef = useCallback(() => {
     get();
   }, [get]);
+
+  void editorRef;
 
   return <Milkdown />;
 }
 
-export default function EditorComponent({ defaultValue, onChange }: EditorComponentProps) {
+export default function EditorComponent({ onChange }: EditorComponentProps) {
   return (
-    <ProsemirrorAdapterProvider>
-      <MilkdownEditor defaultValue={defaultValue} onChange={onChange} />
-    </ProsemirrorAdapterProvider>
+    <MilkdownProvider>
+      <ProsemirrorAdapterProvider>
+        <MilkdownEditor onChange={onChange} />
+      </ProsemirrorAdapterProvider>
+    </MilkdownProvider>
   );
 }

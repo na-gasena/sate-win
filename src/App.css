@@ -27,7 +27,8 @@
 }
 
 /* Milkdown editor styling */
-.editor-wrapper .milkdown {
+.editor-wrapper .milkdown,
+.editor-wrapper [data-milkdown-root="true"] {
   outline: none;
   font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
   font-size: 18px;
@@ -39,19 +40,23 @@
   overflow-wrap: break-word;
 }
 
-.editor-wrapper .milkdown .editor {
+.editor-wrapper .milkdown .editor,
+.editor-wrapper [data-milkdown-root="true"] .editor {
   outline: none;
+  min-height: 1em;
 }
 
-.editor-wrapper .milkdown [contenteditable] {
+.editor-wrapper [contenteditable] {
   outline: none;
   caret-color: var(--text);
+  min-height: 1em;
 }
 
 /* ProseMirror styles */
 .editor-wrapper .ProseMirror {
   outline: none !important;
   white-space: pre-wrap;
+  min-height: 1em;
 }
 
 .editor-wrapper .ProseMirror p {
