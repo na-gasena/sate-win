@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core';
-import { commonmark } from '@milkdown/preset-commonmark';
+import { commonmark, codeBlockKeymap } from '@milkdown/preset-commonmark';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { useEditor, Milkdown, MilkdownProvider } from '@milkdown/react';
 import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
@@ -23,7 +23,12 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
         });
       })
       .use(commonmark)
-      .use(listener),
+      .use(listener)
+      .config((ctx) => {
+        ctx.set(codeBlockKeymap.key, {
+          CreateCodeBlock: { shortcuts: '' },
+        });
+      }),
     []
   );
 
