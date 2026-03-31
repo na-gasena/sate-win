@@ -114,11 +114,23 @@ const lineNavPlugin = $prose(() => {
 });
 
 // カスタムカーソル（line-heightに依存しない高さ）
+// IME変換中はwidgetを挿入しない（DOM操作で変換が途切れるため）
 const customCaretPlugin = $prose(() => {
+  let composing = false;
   return new Plugin({
     key: new PluginKey('custom-caret'),
     props: {
+      handleDOMEvents: {
+        compositionstart: () => { composing = true; return false; },
+        compositionend: (_view) => {
+          composing = false;
+          // 変換確定後にカーソルを再描画
+          setTimeout(() => _view.dispatch(_view.state.tr), 0);
+          return false;
+        },
+      },
       decorations(state) {
+        if (composing) return DecorationSet.empty;
         const { selection } = state;
         if (!selection.empty) return DecorationSet.empty;
         const widget = Decoration.widget(
