@@ -24,15 +24,5 @@
       "csp": null
     }
   },
-  "plugins": {
-    "fs": {
-      "scope": {
-        "allow": [
-          { "path": "$HOME/**" },
-          { "path": "$DOCUMENT/**" },
-          { "path": "$DESKTOP/**" }
-        ]
-      }
-    }
-  }
+  "plugins": {}
 }
