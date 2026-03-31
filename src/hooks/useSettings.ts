@@ -6,7 +6,7 @@ import {
   exists,
   BaseDirectory,
 } from '@tauri-apps/plugin-fs';
-import { homeDir } from '@tauri-apps/api/path';
+import { homeDir, join } from '@tauri-apps/api/path';
 
 // Settings are stored in ~/Library/Application Support/com.sate.app/ (macOS)
 // Tauri's AppConfig BaseDirectory maps to the OS-standard config location.
@@ -40,14 +40,15 @@ export function useSettings() {
         // If no settings loaded, use default
         if (!settings) {
           const home = await homeDir();
-          const defaultDir = `${home}Documents/Sate`;
+          const defaultDir = await join(home, 'Documents', 'Sate');
           setSettings((prev) => prev ?? { baseDir: defaultDir });
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
         try {
           const home = await homeDir();
-          setSettings({ baseDir: `${home}Documents/Sate` });
+          const defaultDir = await join(home, 'Documents', 'Sate');
+          setSettings({ baseDir: defaultDir });
         } catch {
           setSettings({ baseDir: '~/Documents/Sate' });
         }
