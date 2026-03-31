@@ -30,8 +30,11 @@ html, body {
 }
 
 ::selection {
-  background: var(--accent);
-  color: var(--bg);
+  background: #5a5850;
+}
+
+.ProseMirror ::selection {
+  background: #5a5850;
 }
 
 /* Hide scrollbar but keep functionality */
