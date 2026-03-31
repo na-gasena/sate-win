@@ -1,0 +1,97 @@
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  animation: fade-in 150ms ease-out;
+}
+
+.settings-panel {
+  background: #2a2a28;
+  border: 1px solid #3a3a38;
+  border-radius: 10px;
+  padding: 24px 32px;
+  min-width: 400px;
+  max-width: 500px;
+}
+
+.settings-title {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+.settings-field {
+  margin-bottom: 20px;
+}
+
+.settings-label {
+  display: block;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.settings-input {
+  width: 100%;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 14px;
+  color: var(--text);
+  background: #1a1a18;
+  border: 1px solid #3a3a38;
+  border-radius: 6px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.settings-input:focus {
+  border-color: var(--accent);
+}
+
+.settings-hint {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.settings-btn {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 13px;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.settings-btn-cancel {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.settings-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-btn-save {
+  background: #3a3a38;
+  color: var(--text);
+}
+
+.settings-btn-save:hover {
+  background: #4a4a48;
+}

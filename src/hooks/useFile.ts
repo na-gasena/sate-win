@@ -8,8 +8,6 @@ import {
   BaseDirectory,
 } from '@tauri-apps/plugin-fs';
 
-const SAVE_DIR = 'Sate';
-
 function generateFileName(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -18,17 +16,23 @@ function generateFileName(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-async function getNextFileName(): Promise<string> {
+async function ensureDir(subPath: string, baseDir: BaseDirectory): Promise<void> {
+  const dirExists = await exists(subPath, { baseDir });
+  if (!dirExists) {
+    await mkdir(subPath, { baseDir, recursive: true });
+  }
+}
+
+async function getNextFileName(
+  subPath: string,
+  baseDir: BaseDirectory
+): Promise<string> {
   const datePrefix = generateFileName();
-  const dirPath = SAVE_DIR;
 
   try {
-    const dirExists = await exists(dirPath, { baseDir: BaseDirectory.Document });
-    if (!dirExists) {
-      await mkdir(dirPath, { baseDir: BaseDirectory.Document, recursive: true });
-    }
+    await ensureDir(subPath, baseDir);
 
-    const entries = await readDir(dirPath, { baseDir: BaseDirectory.Document });
+    const entries = await readDir(subPath, { baseDir });
     const todayFiles = entries
       .filter((e) => e.name?.startsWith(datePrefix) && e.name?.endsWith('.md'))
       .map((e) => e.name!)
@@ -50,7 +54,13 @@ async function getNextFileName(): Promise<string> {
   }
 }
 
-export function useFile() {
+interface UseFileOptions {
+  baseDir: BaseDirectory;
+  subPath: string;
+}
+
+export function useFile(options: UseFileOptions) {
+  const { baseDir, subPath } = options;
   const [fileName, setFileName] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -60,25 +70,24 @@ export function useFile() {
   contentRef.current = content;
 
   const initFile = useCallback(async () => {
-    const name = await getNextFileName();
+    const name = await getNextFileName(subPath, baseDir);
     setFileName(name);
     setContent('');
-  }, []);
+  }, [subPath, baseDir]);
 
   const saveFile = useCallback(async () => {
     if (!fileName) return;
     setIsSaving(true);
     try {
-      const filePath = `${SAVE_DIR}/${fileName}`;
-      await writeTextFile(filePath, contentRef.current, {
-        baseDir: BaseDirectory.Document,
-      });
+      await ensureDir(subPath, baseDir);
+      const filePath = `${subPath}/${fileName}`;
+      await writeTextFile(filePath, contentRef.current, { baseDir });
     } catch (err) {
       console.error('Failed to save:', err);
     } finally {
       setIsSaving(false);
     }
-  }, [fileName]);
+  }, [fileName, subPath, baseDir]);
 
   const updateContent = useCallback(
     (newContent: string) => {
@@ -95,18 +104,19 @@ export function useFile() {
     [saveFile]
   );
 
-  const openFile = useCallback(async (name: string) => {
-    try {
-      const filePath = `${SAVE_DIR}/${name}`;
-      const text = await readTextFile(filePath, {
-        baseDir: BaseDirectory.Document,
-      });
-      setFileName(name);
-      setContent(text);
-    } catch (err) {
-      console.error('Failed to open file:', err);
-    }
-  }, []);
+  const openFile = useCallback(
+    async (name: string) => {
+      try {
+        const filePath = `${subPath}/${name}`;
+        const text = await readTextFile(filePath, { baseDir });
+        setFileName(name);
+        setContent(text);
+      } catch (err) {
+        console.error('Failed to open file:', err);
+      }
+    },
+    [subPath, baseDir]
+  );
 
   useEffect(() => {
     initFile();
