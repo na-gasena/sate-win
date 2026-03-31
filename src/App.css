@@ -32,10 +32,32 @@
   font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
   font-size: 18px;
   color: var(--text);
-  font-feature-settings: 'palt' 1;
+
+  /* 文字間調整: プロポーショナル詰め + カーニング */
+  font-feature-settings: 'palt' 1, 'kern' 1;
+  font-kerning: normal;
+
+  /* 禁則処理: 行頭・行末禁則を厳格に適用 */
   line-break: strict;
+  /* 単語分割禁止（日本語では意図しない分割を防ぐ） */
   word-break: keep-all;
+  /* 長い欧文・URLなど折り返しが必要な場合に許容 */
   overflow-wrap: break-word;
+  /* ハイフネーション無効（日本語にハイフンは不要） */
+  hyphens: none;
+
+  /* 均等割付 */
+  text-align: justify;
+  text-justify: inter-ideograph;
+
+  /* ぶら下げ組み: 行末の句読点・閉じ括弧をぶら下げ許容 */
+  hanging-punctuation: allow-end;
+
+  /* 和欧文間隔: 漢字とラテン文字・数字の間に自動スペース挿入 */
+  text-autospace: ideograph-alpha ideograph-numeric;
+
+  /* 行頭行末の約物空白詰め */
+  text-spacing-trim: trim-start trim-end allow-end;
 }
 
 .editor-wrapper .milkdown .editor,
