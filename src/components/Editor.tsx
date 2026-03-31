@@ -5,7 +5,7 @@ import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { useEditor, Milkdown, MilkdownProvider } from '@milkdown/react';
 import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
 import { $prose } from '@milkdown/utils';
-import { Plugin, PluginKey } from '@milkdown/prose/state';
+import { Plugin, PluginKey, TextSelection } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
 
 interface EditorComponentProps {
@@ -44,6 +44,70 @@ const selectionHighlightPlugin = $prose(() => {
             style: 'background-color: #555048;',
           }),
         ]);
+      },
+    },
+  });
+});
+
+// Ctrl+A/E を hardbreak 境界での行頭・行末移動にする
+const lineNavPlugin = $prose(() => {
+  return new Plugin({
+    key: new PluginKey('line-navigation'),
+    props: {
+      handleKeyDown(view, event) {
+        if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return false;
+
+        if (event.key === 'a') {
+          event.preventDefault();
+          const { state } = view;
+          const { $head } = state.selection;
+          const parent = $head.parent;
+          const startOfBlock = $head.start();
+          const posInParent = $head.pos - startOfBlock;
+
+          let lineStart = 0;
+          let offset = 0;
+          for (let i = 0; i < parent.childCount; i++) {
+            const child = parent.child(i);
+            if (offset >= posInParent) break;
+            if (child.type.name === 'hardbreak') {
+              lineStart = offset + child.nodeSize;
+            }
+            offset += child.nodeSize;
+          }
+
+          view.dispatch(
+            state.tr.setSelection(TextSelection.create(state.doc, startOfBlock + lineStart))
+          );
+          return true;
+        }
+
+        if (event.key === 'e') {
+          event.preventDefault();
+          const { state } = view;
+          const { $head } = state.selection;
+          const parent = $head.parent;
+          const startOfBlock = $head.start();
+          const posInParent = $head.pos - startOfBlock;
+
+          let lineEnd = parent.content.size;
+          let offset = 0;
+          for (let i = 0; i < parent.childCount; i++) {
+            const child = parent.child(i);
+            if (child.type.name === 'hardbreak' && offset >= posInParent) {
+              lineEnd = offset;
+              break;
+            }
+            offset += child.nodeSize;
+          }
+
+          view.dispatch(
+            state.tr.setSelection(TextSelection.create(state.doc, startOfBlock + lineEnd))
+          );
+          return true;
+        }
+
+        return false;
       },
     },
   });
@@ -88,6 +152,7 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
       .use(commonmark)
       .use(listener)
       .use(enterAsHardBreakPlugin)
+      .use(lineNavPlugin)
       .use(selectionHighlightPlugin)
       .use(customCaretPlugin)
       .config((ctx) => {
