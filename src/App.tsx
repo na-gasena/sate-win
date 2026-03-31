@@ -8,9 +8,8 @@ import { useSettings } from './hooks/useSettings';
 import './App.css';
 
 function App() {
-  const { settings, loaded, updateSettings, resolvedPath } = useSettings();
-  const { baseDir, subPath } = resolvedPath();
-  const { content, updateContent } = useFile({ baseDir, subPath });
+  const { settings, loaded, updateSettings } = useSettings();
+  const { content, updateContent } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -50,7 +49,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showShortcuts, showSettings]);
 
-  if (!loaded) return null;
+  if (!loaded || !settings) return null;
 
   return (
     <div className="app" onClick={handleClick}>

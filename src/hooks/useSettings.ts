@@ -6,26 +6,18 @@ import {
   exists,
   BaseDirectory,
 } from '@tauri-apps/plugin-fs';
+import { homeDir } from '@tauri-apps/api/path';
 
 // Settings are stored in ~/Library/Application Support/com.sate.app/ (macOS)
 // Tauri's AppConfig BaseDirectory maps to the OS-standard config location.
 const CONFIG_FILE = 'settings.json';
 
 export interface Settings {
-  baseDir: string;
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  baseDir: '~/Documents/Sate',
-};
-
-function resolveHome(path: string): string {
-  // Remove trailing slash
-  return path.replace(/\/+$/, '');
+  baseDir: string; // Absolute path, e.g. "/Users/foo/Documents/Sate"
 }
 
 export function useSettings() {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   // Load settings from file on mount
@@ -40,14 +32,30 @@ export function useSettings() {
             baseDir: BaseDirectory.AppConfig,
           });
           const parsed = JSON.parse(text) as Partial<Settings>;
-          setSettings({ ...DEFAULT_SETTINGS, ...parsed });
+          if (parsed.baseDir) {
+            setSettings({ baseDir: parsed.baseDir });
+          }
+        }
+
+        // If no settings loaded, use default
+        if (!settings) {
+          const home = await homeDir();
+          const defaultDir = `${home}Documents/Sate`;
+          setSettings((prev) => prev ?? { baseDir: defaultDir });
         }
       } catch (err) {
         console.error('Failed to load settings:', err);
+        try {
+          const home = await homeDir();
+          setSettings({ baseDir: `${home}Documents/Sate` });
+        } catch {
+          setSettings({ baseDir: '~/Documents/Sate' });
+        }
       } finally {
         setLoaded(true);
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateSettings = useCallback(async (newSettings: Settings) => {
@@ -71,23 +79,9 @@ export function useSettings() {
     }
   }, []);
 
-  // Resolve the baseDir to get the actual path components for Tauri fs
-  // "~/Documents/Sate" -> baseDir: Home, subPath: "Documents/Sate"
-  const resolvedPath = useCallback((): { baseDir: BaseDirectory; subPath: string } => {
-    const dir = resolveHome(settings.baseDir);
-    if (dir.startsWith('~/') || dir === '~') {
-      const sub = dir === '~' ? '' : dir.slice(2);
-      return { baseDir: BaseDirectory.Home, subPath: sub };
-    }
-    // For absolute paths, we still use Home as base and store the full path
-    // This is a simplification; for now we support ~/... paths
-    return { baseDir: BaseDirectory.Home, subPath: dir.replace(/^\//, '') };
-  }, [settings.baseDir]);
-
   return {
     settings,
     loaded,
     updateSettings,
-    resolvedPath,
   };
 }

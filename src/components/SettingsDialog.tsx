@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
 import type { Settings } from '../hooks/useSettings';
 import './SettingsDialog.css';
 
@@ -23,6 +24,17 @@ export default function SettingsDialog({
     }
   }, [visible, settings.baseDir]);
 
+  const handleBrowse = useCallback(async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: '保存先フォルダを選択',
+    });
+    if (selected) {
+      setBaseDir(selected);
+    }
+  }, []);
+
   if (!visible) return null;
 
   const handleSave = () => {
@@ -33,10 +45,6 @@ export default function SettingsDialog({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSave();
-    }
     if (e.key === 'Escape') {
       e.preventDefault();
       onClose();
@@ -53,18 +61,16 @@ export default function SettingsDialog({
         <div className="settings-title">環境設定</div>
 
         <div className="settings-field">
-          <label className="settings-label" htmlFor="settings-basedir">
-            保存先ディレクトリ
-          </label>
-          <input
-            id="settings-basedir"
-            className="settings-input"
-            type="text"
-            value={baseDir}
-            onChange={(e) => setBaseDir(e.target.value)}
-            autoFocus
-            spellCheck={false}
-          />
+          <label className="settings-label">保存先ディレクトリ</label>
+          <div className="settings-dir-row">
+            <div className="settings-dir-display">{baseDir}</div>
+            <button
+              className="settings-btn settings-btn-browse"
+              onClick={handleBrowse}
+            >
+              変更…
+            </button>
+          </div>
           <div className="settings-hint">
             ファイルの保存・読み込みのベースディレクトリ
           </div>
