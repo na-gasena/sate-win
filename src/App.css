@@ -19,9 +19,7 @@
 }
 
 .editor-wrapper {
-  width: 55%;
-  max-width: 720px;
-  min-width: 320px;
+  width: 40ch;
   padding: 48px 0;
 }
 
