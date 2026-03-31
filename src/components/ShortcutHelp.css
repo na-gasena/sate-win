@@ -18,13 +18,17 @@
   max-width: 400px;
 }
 
+.shortcut-section + .shortcut-section {
+  margin-top: 20px;
+}
+
 .shortcut-title {
   font-family: 'YuGothic', 'Yu Gothic', sans-serif;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 16px;
+  letter-spacing: 0.1em;
+  margin-bottom: 10px;
 }
 
 .shortcut-list {
