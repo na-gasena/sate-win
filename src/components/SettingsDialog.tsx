@@ -52,7 +52,7 @@ export default function SettingsDialog({
   };
 
   return (
-    <div className="settings-overlay" onClick={onClose}>
+    <div className="settings-overlay">
       <div
         className="settings-panel"
         onClick={(e) => e.stopPropagation()}
