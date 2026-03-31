@@ -50,6 +50,10 @@
   min-height: 1em;
 }
 
+.editor-wrapper [contenteditable].ime-active {
+  caret-color: var(--text);
+}
+
 /* ProseMirror styles */
 .editor-wrapper .ProseMirror {
   outline: none !important;

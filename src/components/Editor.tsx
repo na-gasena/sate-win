@@ -121,10 +121,14 @@ const customCaretPlugin = $prose(() => {
     key: new PluginKey('custom-caret'),
     props: {
       handleDOMEvents: {
-        compositionstart: () => { composing = true; return false; },
+        compositionstart: (_view) => {
+          composing = true;
+          _view.dom.classList.add('ime-active');
+          return false;
+        },
         compositionend: (_view) => {
           composing = false;
-          // 変換確定後にカーソルを再描画
+          _view.dom.classList.remove('ime-active');
           setTimeout(() => _view.dispatch(_view.state.tr), 0);
           return false;
         },
