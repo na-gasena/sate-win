@@ -46,7 +46,7 @@
 
 .editor-wrapper [contenteditable] {
   outline: none;
-  caret-color: var(--text);
+  caret-color: transparent;
   min-height: 1em;
 }
 
@@ -62,10 +62,43 @@
   margin: 0;
 }
 
-/* Custom selection highlight via ProseMirror decoration */
+/* ネイティブ選択ハイライトを消す */
+.editor-wrapper .ProseMirror ::selection {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+.editor-wrapper .ProseMirror *::selection {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* カスタムカーソル */
+.sate-caret {
+  display: inline;
+  position: relative;
+  pointer-events: none;
+  width: 0;
+  overflow: visible;
+}
+.sate-caret::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.1em;
+  width: 1.5px;
+  height: 1.1em;
+  background-color: var(--text);
+  animation: sate-blink 1s step-end infinite;
+  pointer-events: none;
+}
+@keyframes sate-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* カスタム選択ハイライト */
 .sate-selection {
-  background-color: #555048;
-  border-radius: 1px;
+  background-color: #555048 !important;
 }
 
 .editor-wrapper .ProseMirror h1 {

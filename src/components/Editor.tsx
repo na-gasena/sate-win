@@ -39,8 +39,34 @@ const selectionHighlightPlugin = $prose(() => {
         const { from, to } = state.selection;
         if (from === to) return DecorationSet.empty;
         return DecorationSet.create(state.doc, [
-          Decoration.inline(from, to, { class: 'sate-selection' }),
+          Decoration.inline(from, to, {
+            class: 'sate-selection',
+            style: 'background-color: #555048;',
+          }),
         ]);
+      },
+    },
+  });
+});
+
+// カスタムカーソル（line-heightに依存しない高さ）
+const customCaretPlugin = $prose(() => {
+  return new Plugin({
+    key: new PluginKey('custom-caret'),
+    props: {
+      decorations(state) {
+        const { selection } = state;
+        if (!selection.empty) return DecorationSet.empty;
+        const widget = Decoration.widget(
+          selection.head,
+          () => {
+            const el = document.createElement('span');
+            el.className = 'sate-caret';
+            return el;
+          },
+          { side: -1, key: 'sate-caret' }
+        );
+        return DecorationSet.create(state.doc, [widget]);
       },
     },
   });
@@ -63,6 +89,7 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
       .use(listener)
       .use(enterAsHardBreakPlugin)
       .use(selectionHighlightPlugin)
+      .use(customCaretPlugin)
       .config((ctx) => {
         ctx.set(codeBlockKeymap.key, {
           CreateCodeBlock: { shortcuts: '' },
