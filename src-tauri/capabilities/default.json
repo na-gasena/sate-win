@@ -15,6 +15,6 @@
     "fs:allow-write-file",
     "fs:allow-rename",
     "fs:scope-home",
-    "fs:scope-app-config"
+    "fs:scope-appconfig"
   ]
 }
