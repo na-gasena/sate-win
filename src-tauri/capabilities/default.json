@@ -13,9 +13,14 @@
     "fs:allow-read-dir",
     "fs:allow-read-file",
     "fs:allow-write-file",
+    "fs:allow-write-text-file",
     "fs:allow-rename",
     "fs:scope-home",
+    "fs:scope-home-recursive",
     "fs:scope-appconfig",
+    "fs:scope-appconfig-recursive",
+    "fs:scope-document",
+    "fs:scope-document-recursive",
     "dialog:default",
     "dialog:allow-open"
   ]

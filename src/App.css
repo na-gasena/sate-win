@@ -19,7 +19,7 @@
 }
 
 .editor-wrapper {
-  width: 80ch;
+  width: 60ch;
   padding: 48px 0;
 }
 
@@ -79,7 +79,7 @@
 
 .editor-wrapper .ProseMirror p {
   margin: 0;
-  line-height: 1.5;
+  line-height: 2;
 }
 
 /* ネイティブ選択ハイライトを消す */

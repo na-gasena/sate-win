@@ -11,6 +11,7 @@ import { splitBlock } from '@milkdown/prose/commands';
 
 interface EditorComponentProps {
   onChange: (markdown: string) => void;
+  initialContent?: string;
 }
 
 // Shift+Enter を通常のEnter（段落分割）と同じにする
@@ -59,7 +60,7 @@ const selectionHighlightPlugin = $prose(() => {
   });
 });
 
-function MilkdownEditor({ onChange }: EditorComponentProps) {
+function MilkdownEditor({ onChange, initialContent = '' }: EditorComponentProps) {
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -67,7 +68,7 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
     Editor.make()
       .config((ctx) => {
         ctx.set(rootCtx, root);
-        ctx.set(defaultValueCtx, '');
+        ctx.set(defaultValueCtx, initialContent);
         ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
           onChangeRef.current(markdown);
         });
@@ -88,11 +89,11 @@ function MilkdownEditor({ onChange }: EditorComponentProps) {
   return <Milkdown />;
 }
 
-export default function EditorComponent({ onChange }: EditorComponentProps) {
+export default function EditorComponent({ onChange, initialContent }: EditorComponentProps) {
   return (
     <MilkdownProvider>
       <ProsemirrorAdapterProvider>
-        <MilkdownEditor onChange={onChange} />
+        <MilkdownEditor onChange={onChange} initialContent={initialContent} />
       </ProsemirrorAdapterProvider>
     </MilkdownProvider>
   );

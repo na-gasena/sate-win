@@ -7,7 +7,13 @@ import {
   exists,
 } from '@tauri-apps/plugin-fs';
 
-function generateFileName(): string {
+interface FileMetadata {
+  uuid: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function generateDatePrefix(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -23,7 +29,7 @@ async function ensureDir(dirPath: string): Promise<void> {
 }
 
 async function getNextFileName(dirPath: string): Promise<string> {
-  const datePrefix = generateFileName();
+  const datePrefix = generateDatePrefix();
 
   try {
     await ensureDir(dirPath);
@@ -50,12 +56,47 @@ async function getNextFileName(dirPath: string): Promise<string> {
   }
 }
 
+function buildFrontMatter(meta: FileMetadata): string {
+  return `---\nuuid: ${meta.uuid}\ncreated: ${meta.createdAt}\nupdated: ${meta.updatedAt}\n---\n\n`;
+}
+
+function parseFrontMatter(fileContent: string): { metadata: FileMetadata | null; body: string } {
+  if (!fileContent.startsWith('---\n')) {
+    return { metadata: null, body: fileContent };
+  }
+  const end = fileContent.indexOf('\n---\n', 4);
+  if (end === -1) {
+    return { metadata: null, body: fileContent };
+  }
+  const fm = fileContent.slice(4, end);
+  const rest = fileContent.slice(end + 5); // skip '\n---\n'
+  const body = rest.startsWith('\n') ? rest.slice(1) : rest;
+
+  const uuidMatch = fm.match(/^uuid:\s*(.+)$/m);
+  const createdMatch = fm.match(/^created:\s*(.+)$/m);
+  const updatedMatch = fm.match(/^updated:\s*(.+)$/m);
+
+  if (!uuidMatch || !createdMatch || !updatedMatch) {
+    return { metadata: null, body: fileContent };
+  }
+
+  return {
+    metadata: {
+      uuid: uuidMatch[1].trim(),
+      createdAt: createdMatch[1].trim(),
+      updatedAt: updatedMatch[1].trim(),
+    },
+    body,
+  };
+}
+
 export function useFile(dirPath: string) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
+  const metadataRef = useRef<FileMetadata | null>(null);
 
   contentRef.current = content;
 
@@ -63,15 +104,37 @@ export function useFile(dirPath: string) {
     const name = await getNextFileName(dirPath);
     setFileName(name);
     setContent('');
+    metadataRef.current = null;
   }, [dirPath]);
 
-  const saveFile = useCallback(async () => {
+  const saveFile = useCallback(async (force = false) => {
     if (!fileName) return;
+    const currentContent = contentRef.current;
+    if (!currentContent && !force) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
     setIsSaving(true);
     try {
       await ensureDir(dirPath);
+
+      const now = new Date().toISOString();
+      if (!metadataRef.current) {
+        metadataRef.current = {
+          uuid: crypto.randomUUID(),
+          createdAt: now,
+          updatedAt: now,
+        };
+      } else {
+        metadataRef.current = { ...metadataRef.current, updatedAt: now };
+      }
+
+      const fileContent = buildFrontMatter(metadataRef.current) + currentContent;
       const filePath = `${dirPath}/${fileName}`;
-      await writeTextFile(filePath, contentRef.current);
+      await writeTextFile(filePath, fileContent);
     } catch (err) {
       console.error('Failed to save:', err);
     } finally {
@@ -87,9 +150,12 @@ export function useFile(dirPath: string) {
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
-      saveTimerRef.current = setTimeout(() => {
-        saveFile();
-      }, 1500);
+
+      if (newContent) {
+        saveTimerRef.current = setTimeout(() => {
+          saveFile();
+        }, 1500);
+      }
     },
     [saveFile]
   );
@@ -99,8 +165,10 @@ export function useFile(dirPath: string) {
       try {
         const filePath = `${dirPath}/${name}`;
         const text = await readTextFile(filePath);
+        const { metadata, body } = parseFrontMatter(text);
         setFileName(name);
-        setContent(text);
+        setContent(body);
+        metadataRef.current = metadata;
       } catch (err) {
         console.error('Failed to open file:', err);
       }

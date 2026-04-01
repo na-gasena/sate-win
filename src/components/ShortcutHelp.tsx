@@ -4,6 +4,7 @@ const sections = [
   {
     title: 'App',
     items: [
+      { keys: ['Cmd', 'S'], description: '保存' },
       { keys: ['Cmd', '/'], description: 'ショートカット一覧' },
       { keys: ['Cmd', ','], description: '環境設定' },
       { keys: ['Cmd', 'O'], description: 'ファイルを開く' },
