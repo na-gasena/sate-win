@@ -29,6 +29,18 @@ const shiftEnterAsSplitPlugin = $prose(() => {
   });
 });
 
+// コピー時のプレーンテキストを段落ごとに改行1つで区切る（デフォルトは\n\n）
+const clipboardTextSerializerPlugin = $prose(() => {
+  return new Plugin({
+    key: new PluginKey('clipboard-text-serializer'),
+    props: {
+      clipboardTextSerializer(slice) {
+        return slice.content.textBetween(0, slice.content.size, '\n');
+      },
+    },
+  });
+});
+
 // テキスト選択のハイライトをカスタムデコレーションで描画
 const selectionHighlightPlugin = $prose(() => {
   return new Plugin({
@@ -65,6 +77,7 @@ function MilkdownEditor({ onChange, initialContent = '' }: EditorComponentProps)
       .use(listener)
       .use(shiftEnterAsSplitPlugin)
       .use(selectionHighlightPlugin)
+      .use(clipboardTextSerializerPlugin)
       .config((ctx) => {
         ctx.set(codeBlockKeymap.key, {
           CreateCodeBlock: { shortcuts: '' },
