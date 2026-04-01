@@ -31,7 +31,7 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey && e.key === 's') {
         e.preventDefault();
-        saveFile();
+        saveFile(true);
       }
       if (e.metaKey && e.key === 'o') {
         e.preventDefault();

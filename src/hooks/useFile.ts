@@ -107,10 +107,10 @@ export function useFile(dirPath: string) {
     metadataRef.current = null;
   }, [dirPath]);
 
-  const saveFile = useCallback(async () => {
+  const saveFile = useCallback(async (force = false) => {
     if (!fileName) return;
     const currentContent = contentRef.current;
-    if (!currentContent) return;
+    if (!currentContent && !force) return;
 
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
