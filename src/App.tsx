@@ -3,15 +3,17 @@ import EditorComponent from './components/Editor';
 import WordCount from './components/WordCount';
 import ShortcutHelp from './components/ShortcutHelp';
 import SettingsDialog from './components/SettingsDialog';
+import FileOpenDialog from './components/FileOpenDialog';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { content, updateContent, saveFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, updateContent, saveFile, openFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFileOpen, setShowFileOpen] = useState(false);
 
   const charCount = useMemo(() => {
     return content.replace(/\s/g, '').length;
@@ -31,6 +33,10 @@ function App() {
         e.preventDefault();
         saveFile();
       }
+      if (e.metaKey && e.key === 'o') {
+        e.preventDefault();
+        setShowFileOpen((v) => !v);
+      }
       if (e.metaKey && e.key === '/') {
         e.preventDefault();
         setShowShortcuts((v) => !v);
@@ -46,12 +52,15 @@ function App() {
         } else if (showShortcuts) {
           e.preventDefault();
           setShowShortcuts(false);
+        } else if (showFileOpen) {
+          e.preventDefault();
+          setShowFileOpen(false);
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showShortcuts, showSettings, saveFile]);
+  }, [showShortcuts, showSettings, showFileOpen, saveFile]);
 
   if (!loaded || !settings) return null;
 
@@ -59,7 +68,7 @@ function App() {
     <div className="app" onClick={handleClick}>
       <div className="editor-container">
         <div className="editor-wrapper">
-          <EditorComponent onChange={updateContent} />
+          <EditorComponent key={fileName} initialContent={content} onChange={updateContent} />
         </div>
       </div>
       <WordCount count={charCount} />
@@ -69,6 +78,12 @@ function App() {
         settings={settings}
         onSave={updateSettings}
         onClose={() => setShowSettings(false)}
+      />
+      <FileOpenDialog
+        visible={showFileOpen}
+        dirPath={settings.baseDir}
+        onOpen={openFile}
+        onClose={() => setShowFileOpen(false)}
       />
     </div>
   );

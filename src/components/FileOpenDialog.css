@@ -1,0 +1,58 @@
+.fileopen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+  animation: fade-in 150ms ease-out;
+}
+
+.fileopen-panel {
+  background: #2a2a28;
+  border: 1px solid #3a3a38;
+  border-radius: 10px;
+  padding: 20px 0;
+  width: 360px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+
+.fileopen-title {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0 24px 12px;
+  border-bottom: 1px solid #3a3a38;
+  flex-shrink: 0;
+}
+
+.fileopen-empty {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 16px 24px;
+}
+
+.fileopen-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.fileopen-item {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 13px;
+  color: var(--text);
+  padding: 7px 24px;
+  cursor: pointer;
+}
+
+.fileopen-item--selected {
+  background: #3a3a38;
+}
