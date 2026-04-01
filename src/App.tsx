@@ -9,7 +9,7 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { content, updateContent } = useFile(settings?.baseDir ?? '');
+  const { content, updateContent, saveFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -27,6 +27,10 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey && e.key === 's') {
+        e.preventDefault();
+        saveFile();
+      }
       if (e.metaKey && e.key === '/') {
         e.preventDefault();
         setShowShortcuts((v) => !v);
@@ -47,7 +51,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showShortcuts, showSettings]);
+  }, [showShortcuts, showSettings, saveFile]);
 
   if (!loaded || !settings) return null;
 
