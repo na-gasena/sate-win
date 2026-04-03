@@ -18,7 +18,20 @@ function App() {
   const [showFileOpen, setShowFileOpen] = useState(false);
 
   const charCount = useMemo(() => {
-    return content.replace(/\s/g, '').length;
+    if (!content) return 0;
+    // Milkdownは段落間を \n\n で区切り、空段落に <br /> を入れる
+    // 段落ごとに分割してカウントする
+    const paragraphs = content.split(/\n\n/);
+    let count = 0;
+    for (let i = 0; i < paragraphs.length; i++) {
+      const text = paragraphs[i]
+        .replace(/<[^>]*>/g, '')  // HTMLタグ除去
+        .replace(/\s/g, '');      // 空白除去
+      count += text.length;
+      // 段落間の改行を1としてカウント（最後の段落の後は数えない）
+      if (i < paragraphs.length - 1) count += 1;
+    }
+    return count;
   }, [content]);
 
   const handleClick = useCallback(() => {
