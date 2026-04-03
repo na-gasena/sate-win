@@ -22,6 +22,9 @@
     "fs:scope-document",
     "fs:scope-document-recursive",
     "dialog:default",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select"
   ]
 }

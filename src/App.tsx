@@ -6,6 +6,8 @@ import SettingsDialog from './components/SettingsDialog';
 import FileOpenDialog from './components/FileOpenDialog';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
+import { initDatabase } from './lib/db';
+import { reconcile } from './lib/reconcile';
 import './App.css';
 
 function App() {
@@ -61,6 +63,13 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showShortcuts, showSettings, showFileOpen, saveFile]);
+
+  useEffect(() => {
+    if (!loaded || !settings) return;
+    initDatabase(settings.baseDir)
+      .then(() => reconcile(settings.baseDir))
+      .catch((err) => console.error('Failed to init DB:', err));
+  }, [loaded, settings]);
 
   if (!loaded || !settings) return null;
 

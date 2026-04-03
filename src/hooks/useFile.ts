@@ -6,12 +6,8 @@ import {
   mkdir,
   exists,
 } from '@tauri-apps/plugin-fs';
-
-interface FileMetadata {
-  uuid: string;
-  createdAt: string;
-  updatedAt: string;
-}
+import { type FileMetadata, buildFrontMatter, parseFrontMatter, extractFirstLine } from '../lib/frontmatter';
+import { upsertFile, updateSearchIndex, addSnapshot } from '../lib/db';
 
 function generateDatePrefix(): string {
   const now = new Date();
@@ -56,39 +52,6 @@ async function getNextFileName(dirPath: string): Promise<string> {
   }
 }
 
-function buildFrontMatter(meta: FileMetadata): string {
-  return `---\nuuid: ${meta.uuid}\ncreated: ${meta.createdAt}\nupdated: ${meta.updatedAt}\n---\n\n`;
-}
-
-function parseFrontMatter(fileContent: string): { metadata: FileMetadata | null; body: string } {
-  if (!fileContent.startsWith('---\n')) {
-    return { metadata: null, body: fileContent };
-  }
-  const end = fileContent.indexOf('\n---\n', 4);
-  if (end === -1) {
-    return { metadata: null, body: fileContent };
-  }
-  const fm = fileContent.slice(4, end);
-  const rest = fileContent.slice(end + 5); // skip '\n---\n'
-  const body = rest.startsWith('\n') ? rest.slice(1) : rest;
-
-  const uuidMatch = fm.match(/^uuid:\s*(.+)$/m);
-  const createdMatch = fm.match(/^created:\s*(.+)$/m);
-  const updatedMatch = fm.match(/^updated:\s*(.+)$/m);
-
-  if (!uuidMatch || !createdMatch || !updatedMatch) {
-    return { metadata: null, body: fileContent };
-  }
-
-  return {
-    metadata: {
-      uuid: uuidMatch[1].trim(),
-      createdAt: createdMatch[1].trim(),
-      updatedAt: updatedMatch[1].trim(),
-    },
-    body,
-  };
-}
 
 export function useFile(dirPath: string) {
   const [fileName, setFileName] = useState<string | null>(null);
@@ -127,6 +90,7 @@ export function useFile(dirPath: string) {
           uuid: crypto.randomUUID(),
           createdAt: now,
           updatedAt: now,
+          title: null,
         };
       } else {
         metadataRef.current = { ...metadataRef.current, updatedAt: now };
@@ -135,6 +99,22 @@ export function useFile(dirPath: string) {
       const fileContent = buildFrontMatter(metadataRef.current) + currentContent;
       const filePath = `${dirPath}/${fileName}`;
       await writeTextFile(filePath, fileContent);
+
+      // --- DB 更新 ---
+      // ファイル保存が成功したら、DB側も同期する。
+      // DB がまだ初期化されてない場合は静かにスキップ（起動直後など）。
+      try {
+        const meta = metadataRef.current;
+        const createdAt = Math.floor(new Date(meta.createdAt).getTime() / 1000);
+        const updatedAt = Math.floor(new Date(meta.updatedAt).getTime() / 1000);
+        const firstLine = extractFirstLine(currentContent);
+
+        await upsertFile(meta.uuid, createdAt, updatedAt, meta.title, firstLine, fileName);
+        await updateSearchIndex(meta.uuid, currentContent);
+        await addSnapshot(meta.uuid, fileContent);
+      } catch {
+        // DB未初期化の場合はここに来る。ファイル保存自体は成功してるので問題なし
+      }
     } catch (err) {
       console.error('Failed to save:', err);
     } finally {

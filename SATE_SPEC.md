@@ -137,6 +137,7 @@ word-break: keep-all;
 ---
 id: 550e8400-e29b-41d4-a716-446655440000   # UUID（不変）
 created: 2025-03-30T14:23:10
+title: 今日の日記      # 任意。なければNULL、ファイル名で代替
 font: yu-gothic        # yu-gothic | yu-mincho
 theme: dark            # dark | light
 # 将来的に追加予定
@@ -154,7 +155,7 @@ theme: dark            # dark | light
 2. 見つからない          → 新規ファイルとして扱う
 ```
 
-リネーム・移動・iCloud同期のいずれの場合もUUIDは不変。
+リネーム・移動・iCloud同期のいずれの場合もUUIDは不変なので、すべてのケースをカバーできる。
 
 ---
 
@@ -185,8 +186,9 @@ CREATE TABLE files (
   file_id TEXT PRIMARY KEY,  -- フロントマターのUUIDそのまま
   created_at INTEGER,
   updated_at INTEGER,
+  title TEXT,                -- フロントマターのtitle（NULLも可）
   first_line TEXT,           -- 本文の書き出し行（一覧表示用キャッシュ）
-  current_path TEXT          -- ファイル名がタイトルを兼ねる
+  current_path TEXT          -- ファイルの現在のパス
 );
 
 CREATE TABLE snapshots (
@@ -206,8 +208,11 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 ファイル一覧の表示：
 ```
 ┌────────────────────────────────────┐
-│ 2025-03-30-001                     │  ← ファイル名 = タイトル
+│ 今日の日記                          │  ← titleがあればそちら
 │ 本文の書き出しがここに…             │  ← first_line
+├────────────────────────────────────┤
+│ 2025-03-29-003                     │  ← titleがなければファイル名
+│ 本文の書き出しがここに…             │
 └────────────────────────────────────┘
 ```
 
@@ -343,11 +348,11 @@ window.addEventListener('wheel', (e) => {
 - [x] Tauriプロジェクトのセットアップ
 - [x] Milkdownの組み込み
 - [x] 游ゴシックでテキストが画面中央から始まるレイアウト
-- [ ] ファイルの自動命名と自動保存
+- [x] ファイルの自動命名と自動保存
 - [x] フルスクリーン表示
 
 ### Phase 2（体験を整える）
-- [ ] 文字数カウンター
+- [x] 文字数カウンター
 - [ ] ファイルオーバーレイ（一覧表示）
 - [ ] 全文検索（SQLite FTS）
 - [ ] スナップショット自動保存
