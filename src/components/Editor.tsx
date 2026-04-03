@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Editor, rootCtx, defaultValueCtx } from '@milkdown/core';
 import { commonmark, codeBlockKeymap } from '@milkdown/preset-commonmark';
+import { history } from '@milkdown/plugin-history';
 import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { useEditor, Milkdown, MilkdownProvider } from '@milkdown/react';
 import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
@@ -74,6 +75,7 @@ function MilkdownEditor({ onChange, initialContent = '' }: EditorComponentProps)
         });
       })
       .use(commonmark)
+      .use(history)
       .use(listener)
       .use(shiftEnterAsSplitPlugin)
       .use(selectionHighlightPlugin)
