@@ -87,13 +87,25 @@ export function parseFrontMatter(fileContent: string): {
 }
 
 /**
- * 本文の1行目を取得する（ファイル一覧での表示用）。
- * 空行やMarkdownの見出し記号は除去する。
+ * 本文の書き出しを取得する（ファイル一覧での表示用）。
+ * 複数段落にまたがるテキストをスペースで繋いで、最大100文字まで返す。
+ * Markdownの見出し記号（#）は除去する。
  */
-export function extractFirstLine(body: string): string | null {
+export function extractFirstLine(body: string, maxLength = 100): string | null {
+  const parts: string[] = [];
+  let total = 0;
+
   for (const line of body.split('\n')) {
     const trimmed = line.replace(/^#+\s*/, '').trim();
-    if (trimmed) return trimmed;
+    if (!trimmed) continue;
+
+    parts.push(trimmed);
+    total += trimmed.length;
+    if (total >= maxLength) break;
   }
-  return null;
+
+  if (parts.length === 0) return null;
+
+  const joined = parts.join(' ');
+  return joined.length > maxLength ? joined.slice(0, maxLength) + '…' : joined;
 }

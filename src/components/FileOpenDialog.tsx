@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readDir } from '@tauri-apps/plugin-fs';
+import { type FileRecord, getAllFiles } from '../lib/db';
 import './FileOpenDialog.css';
 
 interface FileOpenDialogProps {
@@ -10,7 +10,7 @@ interface FileOpenDialogProps {
 }
 
 export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: FileOpenDialogProps) {
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<FileRecord[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
@@ -19,13 +19,9 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
     if (!visible) return;
     (async () => {
       try {
-        const entries = await readDir(dirPath);
-        const mdFiles = entries
-          .filter((e) => e.name?.endsWith('.md'))
-          .map((e) => e.name!)
-          .sort()
-          .reverse();
-        setFiles(mdFiles);
+        // DB から取得（updated_at 降順で返ってくる）
+        const records = await getAllFiles();
+        setFiles(records);
         setSelectedIndex(0);
       } catch {
         setFiles([]);
@@ -54,8 +50,9 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        if (files[selectedIndex]) {
-          onOpen(files[selectedIndex]);
+        const file = files[selectedIndex];
+        if (file?.current_path) {
+          onOpen(file.current_path);
           onClose();
         }
       } else if (e.key === 'Escape') {
@@ -82,15 +79,20 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
           <div className="fileopen-empty">ファイルがありません</div>
         ) : (
           <div className="fileopen-list">
-            {files.map((name, i) => (
+            {files.map((file, i) => (
               <div
-                key={name}
+                key={file.file_id}
                 ref={i === selectedIndex ? selectedItemRef : null}
                 className={`fileopen-item${i === selectedIndex ? ' fileopen-item--selected' : ''}`}
-                onClick={() => { onOpen(name); onClose(); }}
+                onClick={() => { if (file.current_path) { onOpen(file.current_path); onClose(); } }}
                 onMouseEnter={() => setSelectedIndex(i)}
               >
-                {name.replace(/\.md$/, '')}
+                <div className="fileopen-item-name">
+                  {file.title || file.current_path?.replace(/\.md$/, '') || '無題'}
+                </div>
+                {file.first_line && (
+                  <div className="fileopen-item-preview">{file.first_line}</div>
+                )}
               </div>
             ))}
           </div>

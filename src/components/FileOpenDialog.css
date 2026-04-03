@@ -46,13 +46,26 @@
 }
 
 .fileopen-item {
-  font-family: 'SF Mono', 'Menlo', monospace;
-  font-size: 13px;
-  color: var(--text);
-  padding: 7px 24px;
+  padding: 8px 24px;
   cursor: pointer;
 }
 
 .fileopen-item--selected {
   background: #3a3a38;
+}
+
+.fileopen-item-name {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.fileopen-item-preview {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
