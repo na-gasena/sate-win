@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { type FileRecord, getAllFiles } from '../lib/db';
+import { type FileRecord, getAllFiles, searchFiles, getFileById } from '../lib/db';
 import './FileOpenDialog.css';
 
 interface FileOpenDialogProps {
@@ -9,32 +9,94 @@ interface FileOpenDialogProps {
   onClose: () => void;
 }
 
-export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: FileOpenDialogProps) {
-  const [files, setFiles] = useState<FileRecord[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const selectedItemRef = useRef<HTMLDivElement>(null);
+interface DisplayItem {
+  file_id: string;
+  name: string;
+  preview: string | null;
+  current_path: string | null;
+}
 
+function renderSnippet(text: string) {
+  // 【マッチ部分】を下線付きspanに変換する
+  const parts = text.split(/【|】/);
+  // split結果: [前, マッチ, 後, マッチ, 後, ...] — 奇数indexがマッチ部分
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <span key={i} className="fileopen-match">{part}</span>
+      : <span key={i}>{part}</span>
+  );
+}
+
+export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: FileOpenDialogProps) {
+  const [items, setItems] = useState<DisplayItem[]>([]);
+  const [query, setQuery] = useState('');
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
+  const composingRef = useRef(false);
+
+  // オーバーレイが開いたら検索欄にフォーカス & 一覧を取得
   useEffect(() => {
-    if (!visible) return;
-    (async () => {
-      try {
-        // DB から取得（updated_at 降順で返ってくる）
-        const records = await getAllFiles();
-        setFiles(records);
-        setSelectedIndex(0);
-      } catch {
-        setFiles([]);
-        setSelectedIndex(0);
-      }
-    })();
+    if (!visible) {
+      setQuery('');
+      return;
+    }
+    inputRef.current?.focus();
+    loadAllFiles();
   }, [visible, dirPath]);
 
+  // クエリが変わるたびに検索 or 全件取得
   useEffect(() => {
-    if (visible) {
-      panelRef.current?.focus();
+    if (!visible) return;
+    if (query.trim()) {
+      doSearch(query.trim());
+    } else {
+      loadAllFiles();
     }
-  }, [visible]);
+  }, [query, visible]);
+
+  async function loadAllFiles() {
+    try {
+      const records = await getAllFiles();
+      setItems(records.map(fileRecordToItem));
+      setSelectedIndex(0);
+    } catch {
+      setItems([]);
+      setSelectedIndex(0);
+    }
+  }
+
+  async function doSearch(q: string) {
+    try {
+      const results = await searchFiles(q);
+      // 検索結果から FileRecord を引いて表示用データを作る
+      const displayItems: DisplayItem[] = [];
+      for (const r of results) {
+        const file = await getFileById(r.file_id);
+        if (!file) continue;
+        displayItems.push({
+          file_id: file.file_id,
+          name: file.title || file.current_path?.replace(/\.md$/, '') || '無題',
+          preview: r.snippet,
+          current_path: file.current_path,
+        });
+      }
+      setItems(displayItems);
+      setSelectedIndex(0);
+    } catch {
+      setItems([]);
+      setSelectedIndex(0);
+    }
+  }
+
+  function fileRecordToItem(file: FileRecord): DisplayItem {
+    return {
+      file_id: file.file_id,
+      name: file.title || file.current_path?.replace(/\.md$/, '') || '無題',
+      preview: file.first_line,
+      current_path: file.current_path,
+    };
+  }
 
   useEffect(() => {
     selectedItemRef.current?.scrollIntoView({ block: 'nearest' });
@@ -42,17 +104,19 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // IME変換中のキー入力は無視（変換確定のEnterでファイルを開かないように）
+      if (composingRef.current) return;
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, files.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, items.length - 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setSelectedIndex((i) => Math.max(i - 1, 0));
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        const file = files[selectedIndex];
-        if (file?.current_path) {
-          onOpen(file.current_path);
+        const item = items[selectedIndex];
+        if (item?.current_path) {
+          onOpen(item.current_path);
           onClose();
         }
       } else if (e.key === 'Escape') {
@@ -60,7 +124,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
         onClose();
       }
     },
-    [files, selectedIndex, onOpen, onClose]
+    [items, selectedIndex, onOpen, onClose]
   );
 
   if (!visible) return null;
@@ -68,30 +132,39 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
   return (
     <div className="fileopen-overlay" onClick={onClose}>
       <div
-        ref={panelRef}
         className="fileopen-panel"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
-        tabIndex={-1}
       >
-        <div className="fileopen-title">ファイルを開く</div>
-        {files.length === 0 ? (
-          <div className="fileopen-empty">ファイルがありません</div>
+        <div className="fileopen-search">
+          <input
+            ref={inputRef}
+            className="fileopen-search-input"
+            type="text"
+            placeholder="検索…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onCompositionStart={() => { composingRef.current = true; }}
+            onCompositionEnd={() => { setTimeout(() => { composingRef.current = false; }, 50); }}
+          />
+        </div>
+        {items.length === 0 ? (
+          <div className="fileopen-empty">
+            {query ? '見つかりません' : 'ファイルがありません'}
+          </div>
         ) : (
           <div className="fileopen-list">
-            {files.map((file, i) => (
+            {items.map((item, i) => (
               <div
-                key={file.file_id}
+                key={item.file_id}
                 ref={i === selectedIndex ? selectedItemRef : null}
                 className={`fileopen-item${i === selectedIndex ? ' fileopen-item--selected' : ''}`}
-                onClick={() => { if (file.current_path) { onOpen(file.current_path); onClose(); } }}
+                onClick={() => { if (item.current_path) { onOpen(item.current_path); onClose(); } }}
                 onMouseEnter={() => setSelectedIndex(i)}
               >
-                <div className="fileopen-item-name">
-                  {file.title || file.current_path?.replace(/\.md$/, '') || '無題'}
-                </div>
-                {file.first_line && (
-                  <div className="fileopen-item-preview">{file.first_line}</div>
+                <div className="fileopen-item-name">{item.name}</div>
+                {item.preview && (
+                  <div className="fileopen-item-preview">{renderSnippet(item.preview)}</div>
                 )}
               </div>
             ))}

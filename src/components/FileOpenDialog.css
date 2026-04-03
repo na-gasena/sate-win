@@ -21,15 +21,27 @@
   outline: none;
 }
 
-.fileopen-title {
-  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0 24px 12px;
+.fileopen-search {
+  padding: 0 16px 12px;
   border-bottom: 1px solid #3a3a38;
   flex-shrink: 0;
+}
+
+.fileopen-search-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 15px;
+  color: var(--text);
+  padding: 4px 8px;
+  box-sizing: border-box;
+}
+
+.fileopen-search-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 .fileopen-empty {
@@ -57,6 +69,13 @@
 .fileopen-item-name {
   font-family: 'YuGothic', 'Yu Gothic', sans-serif;
   font-size: 13px;
+  color: var(--text);
+}
+
+.fileopen-match {
+  text-decoration: underline;
+  text-decoration-color: var(--text-muted);
+  text-underline-offset: 2px;
   color: var(--text);
 }
 

@@ -27,10 +27,13 @@ CREATE TABLE IF NOT EXISTS snapshots (
 `;
 
 // FTS5 virtual tables cannot use IF NOT EXISTS, so we guard manually.
+// trigram トークナイザーを使用：3文字ずつずらしてインデックスを作るので、
+// 日本語のようにスペースで区切らない言語でも任意の部分文字列で検索できる。
 const FTS_SQL = `
 CREATE VIRTUAL TABLE search_index USING fts5(
   file_id,
-  content
+  content,
+  tokenize='trigram'
 );
 `;
 
@@ -53,11 +56,16 @@ export async function initDatabase(vaultPath: string): Promise<Database> {
   // Core tables
   await db.execute(SCHEMA_SQL);
 
-  // FTS5 — only create if it doesn't exist yet
-  const ftsCheck = await db.select<{ name: string }[]>(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name='search_index'"
+  // FTS5 — trigram トークナイザーで作成。
+  // 既存テーブルがある場合はトークナイザーが違う可能性があるので再作成する。
+  const ftsCheck = await db.select<{ sql: string }[]>(
+    "SELECT sql FROM sqlite_master WHERE type='table' AND name='search_index'"
   );
   if (ftsCheck.length === 0) {
+    await db.execute(FTS_SQL);
+  } else if (!ftsCheck[0].sql.includes('trigram')) {
+    // 古いトークナイザーのテーブルがあれば作り直す
+    await db.execute('DROP TABLE search_index');
     await db.execute(FTS_SQL);
   }
 
@@ -197,13 +205,28 @@ export interface SearchResult {
 }
 
 export async function searchFiles(query: string): Promise<SearchResult[]> {
-  if (!query.trim()) return [];
+  const q = query.trim();
+  if (!q) return [];
   const d = getDatabase();
+
+  if (q.length < 3) {
+    // 1〜2文字: trigram が効かないので LIKE で部分一致検索（全行スキャン）。
+    // 個人のテキストファイル程度の件数なら十分高速。
+    return d.select<SearchResult[]>(
+      `SELECT file_id, substr(content, max(1, instr(content, $1) - 16), 64) AS snippet
+       FROM search_index
+       WHERE content LIKE '%' || $1 || '%'`,
+      [q],
+    );
+  }
+
+  // 3文字以上: FTS5 trigram でフレーズ検索
+  const escaped = q.replace(/"/g, '""');
   return d.select<SearchResult[]>(
     `SELECT file_id, snippet(search_index, 1, '【', '】', '…', 32) AS snippet
      FROM search_index
      WHERE search_index MATCH $1
      ORDER BY rank`,
-    [query],
+    [`"${escaped}"`],
   );
 }
