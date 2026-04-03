@@ -105,6 +105,7 @@ function App() {
           <EditorComponent key={fileName} initialContent={content} onChange={updateContent} />
         </div>
       </div>
+      {fileName && <div className="file-name">{fileName.replace(/\.md$/, '')}</div>}
       <WordCount count={charCount} />
       <ShortcutHelp visible={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SettingsDialog

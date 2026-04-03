@@ -159,6 +159,19 @@
   margin: 1.5em 0;
 }
 
+/* File name */
+.file-name {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* Word count */
 .word-count {
   position: fixed;
