@@ -12,7 +12,7 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { fileName, content, updateContent, saveFile, openFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, updateContent, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -34,6 +34,18 @@ function App() {
       if (e.metaKey && e.key === 's') {
         e.preventDefault();
         saveFile(true);
+      }
+      if (e.metaKey && e.key === 'n') {
+        e.preventDefault();
+        if (content) {
+          saveFile(true).then(() => {
+            initFile();
+            setTimeout(() => {
+              const el = document.querySelector('.ProseMirror') as HTMLElement | null;
+              el?.focus();
+            }, 160);
+          });
+        }
       }
       if (e.metaKey && e.key === 'o') {
         e.preventDefault();
@@ -62,7 +74,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showShortcuts, showSettings, showFileOpen, saveFile]);
+  }, [showShortcuts, showSettings, showFileOpen, saveFile, initFile, content]);
 
   useEffect(() => {
     if (!loaded || !settings) return;
