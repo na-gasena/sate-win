@@ -31,31 +31,28 @@
   font-size: 18px;
   color: var(--text);
 
-  /* 文字間調整: プロポーショナル詰め + カーニング */
-  font-feature-settings: 'palt' 1, 'kern' 1;
+  /* 約物のみ半角化 (halt) + カーニング。palt は本文全体を詰めるため使わない */
+  font-feature-settings: 'halt' 1, 'kern' 1;
   font-kerning: normal;
 
-  /* 禁則処理: 行頭・行末禁則を厳格に適用 */
+  /* 禁則処理: JIS X 4051 厳格モード — 行頭に句読点・閉じ括弧を許さない */
   line-break: strict;
-  /* normal: 日本語は文字間で折り返し、英単語も長すぎれば折り返す */
   word-break: normal;
-  /* 長い欧文・URLなど折り返しが必要な場合に許容 */
   overflow-wrap: break-word;
-  /* ハイフネーション無効（日本語にハイフンは不要） */
   hyphens: none;
 
-  /* 均等割付: auto で和文は均等、欧文はスペース調整 */
+  /* 均等割付: inter-character で和文の文字間を均等配分 */
   text-align: justify;
-  text-justify: auto;
+  text-justify: inter-character;
 
-  /* ぶら下げ組み: 行末の句読点・閉じ括弧をぶら下げ許容 */
+  /* ぶら下げ組み: 行末の句読点・閉じ括弧を行ボックス外にぶら下げ (WebKit対応) */
   hanging-punctuation: allow-end;
 
-  /* 和欧文間隔: 漢字とラテン文字・数字の間に自動スペース挿入 */
-  text-autospace: ideograph-alpha ideograph-numeric;
+  /* 和欧文間スペース: 漢字⇔ラテン文字・数字間に四分アキを自動挿入 */
+  text-autospace: normal;
 
-  /* 行頭行末の約物空白詰め */
-  text-spacing-trim: trim-start trim-end allow-end;
+  /* 連続約物の詰め処理 (JLREQ準拠: 段落先頭のみ全角維持) */
+  text-spacing-trim: space-first;
 }
 
 .editor-wrapper .milkdown .editor,
@@ -105,6 +102,8 @@
   color: var(--text);
   font-family: inherit;
   letter-spacing: normal;
+  /* 見出しはプロポーショナル詰め */
+  font-feature-settings: 'palt' 1, 'kern' 1;
 }
 
 .editor-wrapper .ProseMirror h2 {
@@ -115,6 +114,7 @@
   color: var(--text);
   font-family: inherit;
   letter-spacing: normal;
+  font-feature-settings: 'palt' 1, 'kern' 1;
 }
 
 .editor-wrapper .ProseMirror h3 {
