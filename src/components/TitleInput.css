@@ -1,0 +1,46 @@
+.title-input-area {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  padding-bottom: 20px;
+  pointer-events: none;
+}
+
+.title-input-area.title-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.title-input-area.title-has-value {
+  opacity: 0.35;
+  pointer-events: auto;
+}
+
+.title-input-area.title-has-value:hover {
+  opacity: 1;
+}
+
+.title-input {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--text-muted);
+  caret-color: var(--text);
+  font-feature-settings: 'palt' 1, 'kern' 1;
+  letter-spacing: 0.02em;
+}
+
+.title-input:focus {
+  color: var(--text);
+}
+
+.title-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.4;
+}

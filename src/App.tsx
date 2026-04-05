@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import EditorComponent from './components/Editor';
+import TitleInput from './components/TitleInput';
 import WordCount from './components/WordCount';
 import ShortcutHelp from './components/ShortcutHelp';
 import SettingsDialog from './components/SettingsDialog';
@@ -12,7 +13,7 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { fileName, content, updateContent, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, title, updateContent, updateTitle, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -102,6 +103,7 @@ function App() {
     <div className="app" onClick={handleClick}>
       <div className="editor-container">
         <div className="editor-wrapper">
+          <TitleInput key={`title-${fileName}`} value={title} onChange={updateTitle} />
           <EditorComponent key={fileName} initialContent={content} onChange={updateContent} />
         </div>
       </div>
