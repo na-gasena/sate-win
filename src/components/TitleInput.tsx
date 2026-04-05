@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import './TitleInput.css';
 
 interface TitleInputProps {
@@ -7,12 +7,7 @@ interface TitleInputProps {
 }
 
 export default function TitleInput({ value, onChange }: TitleInputProps) {
-  const [focused, setFocused] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const hasValue = !!value;
-  const visible = focused || hovered || hasValue;
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,10 +29,6 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
     }
   }, []);
 
-  // マウスが近づいたときのホバー領域を広めに取る
-  const handleMouseEnter = useCallback(() => setHovered(true), []);
-  const handleMouseLeave = useCallback(() => setHovered(false), []);
-
   // エディタから上矢印キーでタイトルにフォーカス
   useEffect(() => {
     const handleEditorKeyDown = (e: KeyboardEvent) => {
@@ -50,7 +41,6 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
       if (!sel || sel.rangeCount === 0) return;
 
       const range = sel.getRangeAt(0);
-      // カーソルが最初のノードの先頭付近にいるか
       const firstChild = editor.firstChild;
       if (!firstChild) return;
 
@@ -69,19 +59,13 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
   }, []);
 
   return (
-    <div
-      className={`title-input-area ${visible ? 'title-visible' : ''} ${hasValue && !focused && !hovered ? 'title-has-value' : ''}`}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
+    <div className="title-input-area">
       <input
         ref={inputRef}
         className="title-input"
         type="text"
         value={value ?? ''}
         onChange={handleChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         onKeyDown={handleKeyDown}
         placeholder=""
         spellCheck={false}
