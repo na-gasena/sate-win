@@ -83,7 +83,7 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         onKeyDown={handleKeyDown}
-        placeholder="題"
+        placeholder=""
         spellCheck={false}
         autoComplete="off"
       />

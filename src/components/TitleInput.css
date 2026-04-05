@@ -39,8 +39,3 @@
 .title-input:focus {
   color: var(--text);
 }
-
-.title-input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.4;
-}
