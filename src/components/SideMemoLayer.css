@@ -28,28 +28,34 @@
   width: calc(50% - 33ch);
 }
 
-/* 個々のメモ */
-.side-memo {
+/* ===== メモカード ===== */
+
+.memo-card {
   position: absolute;
   width: 160px;
   pointer-events: auto;
-  transition: opacity 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.side-memo:hover,
-.side-memo--focused {
+.memo-card.memo-card--positioned {
   opacity: 1;
 }
 
-.side-memo--left {
-  right: 16px;
+.memo-card--left {
+  /* editor-container の左端から 50%-33ch (ガター幅) の右端に配置 */
+  left: calc(50% - 33ch - 160px - 16px);
 }
 
-.side-memo--right {
-  left: 16px;
+.memo-card--right {
+  left: calc(50% + 33ch + 16px);
 }
 
-.side-memo-textarea {
+.memo-card--focused .memo-card-textarea {
+  color: var(--text);
+}
+
+.memo-card-textarea {
   width: 100%;
   min-height: 32px;
   background: transparent;
@@ -66,40 +72,40 @@
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.side-memo-textarea::placeholder {
+.memo-card-textarea::placeholder {
   color: var(--text-muted);
   opacity: 0.4;
 }
 
-.side-memo-textarea:hover {
+.memo-card-textarea:hover {
   border-color: #3a3a38;
 }
 
-.side-memo-textarea:focus {
+.memo-card-textarea:focus {
   border-color: var(--accent);
   color: var(--text);
 }
 
 /* ドラッグハンドル（上辺） */
-.side-memo-drag {
+.memo-card-drag {
   height: 6px;
   cursor: grab;
   opacity: 0;
   transition: opacity 0.15s ease;
 }
 
-.side-memo-drag:active {
+.memo-card-drag:active {
   cursor: grabbing;
 }
 
-.side-memo:hover .side-memo-drag {
+.memo-card:hover .memo-card-drag {
   opacity: 1;
   background: linear-gradient(to bottom, var(--accent), transparent);
   border-radius: 3px 3px 0 0;
 }
 
 /* 削除ボタン */
-.side-memo-delete {
+.memo-card-delete {
   position: absolute;
   top: -4px;
   right: -4px;
@@ -119,10 +125,10 @@
   padding: 0;
 }
 
-.side-memo:hover .side-memo-delete {
+.memo-card:hover .memo-card-delete {
   opacity: 0.6;
 }
 
-.side-memo-delete:hover {
+.memo-card-delete:hover {
   opacity: 1 !important;
 }

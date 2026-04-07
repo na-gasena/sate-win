@@ -10,6 +10,7 @@ import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import { initDatabase } from './lib/db';
 import { reconcile } from './lib/reconcile';
+import type { Memo } from './lib/frontmatter';
 import './App.css';
 
 function App() {
@@ -19,19 +20,17 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const memosRef = useRef<Memo[]>(memos);
+  memosRef.current = memos;
+  const editorViewRef = useRef<import('@milkdown/prose/view').EditorView | null>(null);
 
   const charCount = useMemo(() => {
     if (!content) return 0;
-    // Milkdownは段落間を \n\n で区切り、空段落に <br /> を入れる
-    // 段落ごとに分割してカウントする
     const paragraphs = content.split(/\n\n/);
     let count = 0;
     for (let i = 0; i < paragraphs.length; i++) {
-      const text = paragraphs[i]
-        .replace(/<[^>]*>/g, '')  // HTMLタグ除去
-        .replace(/\s/g, '');      // 空白除去
+      const text = paragraphs[i].replace(/<[^>]*>/g, '').replace(/\s/g, '');
       count += text.length;
-      // 段落間の改行を1としてカウント（最後の段落の後は数えない）
       if (i < paragraphs.length - 1) count += 1;
     }
     return count;
@@ -49,45 +48,23 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === 's') {
-        e.preventDefault();
-        saveFile(true);
-      }
+      if (e.metaKey && e.key === 's') { e.preventDefault(); saveFile(true); }
       if (e.metaKey && e.key === 'n') {
         e.preventDefault();
         if (content) {
           saveFile(true).then(() => {
             initFile();
-            setTimeout(() => {
-              const el = document.querySelector('.ProseMirror') as HTMLElement | null;
-              el?.focus();
-            }, 160);
+            setTimeout(() => { (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus(); }, 160);
           });
         }
       }
-      if (e.metaKey && e.key === 'o') {
-        e.preventDefault();
-        setShowFileOpen((v) => !v);
-      }
-      if (e.metaKey && e.key === '/') {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-      }
-      if (e.metaKey && e.key === ',') {
-        e.preventDefault();
-        setShowSettings((v) => !v);
-      }
+      if (e.metaKey && e.key === 'o') { e.preventDefault(); setShowFileOpen((v) => !v); }
+      if (e.metaKey && e.key === '/') { e.preventDefault(); setShowShortcuts((v) => !v); }
+      if (e.metaKey && e.key === ',') { e.preventDefault(); setShowSettings((v) => !v); }
       if (e.key === 'Escape') {
-        if (showSettings) {
-          e.preventDefault();
-          setShowSettings(false);
-        } else if (showShortcuts) {
-          e.preventDefault();
-          setShowShortcuts(false);
-        } else if (showFileOpen) {
-          e.preventDefault();
-          setShowFileOpen(false);
-        }
+        if (showSettings) { e.preventDefault(); setShowSettings(false); }
+        else if (showShortcuts) { e.preventDefault(); setShowShortcuts(false); }
+        else if (showFileOpen) { e.preventDefault(); setShowFileOpen(false); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -108,13 +85,22 @@ function App() {
       <div className="editor-container" ref={editorContainerRef}>
         <div className="editor-wrapper">
           <TitleInput key={`title-${fileName}`} value={title} onChange={updateTitle} />
-          <EditorComponent key={fileName} initialContent={content} onChange={updateContent} />
+          <EditorComponent
+            key={fileName}
+            initialContent={content}
+            onChange={updateContent}
+            memosRef={memosRef}
+            memos={memos}
+            onMemosChange={updateMemos}
+            editorViewRef={editorViewRef}
+            containerRef={editorContainerRef}
+          />
         </div>
         <SideMemoLayer
           key={`memos-${fileName}`}
           memos={memos}
           onChange={updateMemos}
-          containerRef={editorContainerRef}
+          editorViewRef={editorViewRef}
         />
       </div>
       {fileName && <div className="file-name">{fileName.replace(/\.md$/, '')}</div>}

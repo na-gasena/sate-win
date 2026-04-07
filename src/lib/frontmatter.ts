@@ -11,12 +11,8 @@ import YAML from 'yaml';
 export interface Memo {
   id: string;
   side: 'left' | 'right';
-  /** 紐づく段落のインデックス（0始まり）。フォールバック用 */
-  paragraph: number;
-  /** 紐づく段落の先頭テキスト。テキストマッチで段落を特定する */
-  anchorText: string;
-  /** 段落上端からの相対位置（0〜1）。長い段落内での微調整用 */
-  offsetY: number;
+  /** ドキュメント内の相対位置（0〜1）。doc.content.size に対する比率 */
+  relativePos: number;
   content: string;
 }
 
@@ -44,9 +40,7 @@ export function buildFrontMatter(meta: FileMetadata): string {
     data.memos = meta.memos.map((m) => ({
       id: m.id,
       side: m.side,
-      paragraph: m.paragraph,
-      anchorText: m.anchorText,
-      offsetY: m.offsetY,
+      relativePos: m.relativePos,
       content: m.content,
     }));
   }
@@ -97,13 +91,11 @@ export function parseFrontMatter(fileContent: string): {
   const memos: Memo[] = [];
   if (Array.isArray(parsed.memos)) {
     for (const m of parsed.memos) {
-      if (m && typeof m.id === 'string' && m.side && m.paragraph != null && m.content != null) {
+      if (m && typeof m.id === 'string' && m.side && m.content != null) {
         memos.push({
           id: m.id,
           side: m.side as 'left' | 'right',
-          paragraph: Number(m.paragraph),
-          anchorText: typeof m.anchorText === 'string' ? m.anchorText : '',
-          offsetY: typeof m.offsetY === 'number' ? m.offsetY : 0,
+          relativePos: typeof m.relativePos === 'number' ? m.relativePos : 0,
           content: String(m.content),
         });
       }
