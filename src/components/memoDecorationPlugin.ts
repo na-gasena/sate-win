@@ -4,9 +4,7 @@
  * Widget Decoration は使わない。代わりに:
  * 1. Plugin state で各メモの doc 内 pos を Map<id, pos> で管理
  * 2. docChanged 時は tr.mapping.map() で自動追跡
- * 3. view.update コールバックで coordsAtPos → DOM 要素の style.top を直接設定
- *
- * React のレンダーサイクルを経由しないので、段落リフローと完全同期する。
+ * 3. view.update + MutationObserver で coordsAtPos → style.top を直接設定
  */
 import { Plugin, PluginKey } from '@milkdown/prose/state';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
@@ -30,12 +28,6 @@ function computeAll(doc: ProseMirrorNode, memos: Memo[]): Map<string, number> {
   return m;
 }
 
-/**
- * メモ位置追跡プラグインを作成する。
- *
- * - memosRef: 常に最新のメモ配列を指す ref
- * - containerRef: .editor-container の ref（座標変換用）
- */
 export function createMemoPlugin(
   memosRef: React.RefObject<Memo[]>,
   containerRef: React.RefObject<HTMLDivElement | null>,
@@ -49,20 +41,14 @@ export function createMemoPlugin(
       },
       apply(tr, old, _oldState, newState) {
         const meta = tr.getMeta(memoPluginKey);
-
-        // 個別メモの移動
         if (meta && typeof meta === 'object' && 'memoId' in meta) {
           const next = new Map(old);
           next.set(meta.memoId as string, meta.pos as number);
           return next;
         }
-
-        // メモ追加/削除 → 全再計算
         if (meta === true) {
           return computeAll(newState.doc, memosRef.current ?? []);
         }
-
-        // テキスト編集 → mapping で追跡
         if (tr.docChanged) {
           const next = new Map<string, number>();
           for (const [id, pos] of old) {
@@ -70,13 +56,18 @@ export function createMemoPlugin(
           }
           return next;
         }
-
         return old;
       },
     },
 
-    // view.update で DOM を直接操作して位置を同期
     view(editorView) {
+      /**
+       * 全メモカードの位置を同期する。
+       * - style.top: coordsAtPos で計算したピクセル座標
+       * - style.opacity: 位置確定後に '1' にして フェードイン
+       *   (インラインスタイルは CSS クラスより優先されるので、
+       *    React の再レンダーで className が変わっても消えない)
+       */
       function syncDOM(view: typeof editorView) {
         const container = containerRef.current;
         if (!container) return;
@@ -92,29 +83,42 @@ export function createMemoPlugin(
             const clampedPos = Math.max(1, Math.min(pos, view.state.doc.content.size));
             const coords = view.coordsAtPos(clampedPos);
             el.style.top = `${coords.top - containerRect.top}px`;
-            if (!el.classList.contains('memo-card--positioned')) {
-              el.classList.add('memo-card--positioned');
-            }
+            el.style.opacity = '1';
           } catch {
-            // 無効な pos（ドキュメント範囲外など）
+            // 無効な pos
           }
         }
       }
 
-      // 初回: React がメモカードを描画するまで少し待つ
-      const initTimer = setInterval(() => {
+      // ProseMirror の状態変更時に位置を同期
+      // + MutationObserver で React が新しいカードを描画したタイミングも検知
+      let observer: MutationObserver | null = null;
+
+      function startObserver() {
         const container = containerRef.current;
-        if (!container) return;
-        if (container.querySelector('[data-memo-id]')) {
+        if (!container || observer) return;
+        observer = new MutationObserver(() => {
+          syncDOM(editorView);
+        });
+        observer.observe(container, { childList: true, subtree: true });
+      }
+
+      // 初回位置設定: container が準備できるのを待つ
+      const initTimer = setInterval(() => {
+        if (containerRef.current) {
           clearInterval(initTimer);
           syncDOM(editorView);
+          startObserver();
         }
       }, 50);
-      setTimeout(() => clearInterval(initTimer), 3000); // 安全策
+      setTimeout(() => clearInterval(initTimer), 3000);
 
       return {
         update(view) { syncDOM(view); },
-        destroy() { clearInterval(initTimer); },
+        destroy() {
+          clearInterval(initTimer);
+          observer?.disconnect();
+        },
       };
     },
   });

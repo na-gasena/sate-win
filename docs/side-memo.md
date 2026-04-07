@@ -9,9 +9,9 @@
 
 | 操作 | やり方 |
 |---|---|
-| 作成 | 左右の余白をダブルクリック。クリック位置に最も近い段落に紐づく |
+| 作成 | 左右の余白をダブルクリック。クリック位置のテキスト付近に配置される |
 | 編集 | そのまま書く。小さい文字（12px）で表示される |
-| 移動 | メモ上辺のドラッグハンドル（ホバーで出現）を上下にドラッグ。最寄りの段落に吸着する |
+| 移動 | メモ上辺のドラッグハンドル（ホバーで出現）を上下にドラッグ |
 | 削除 | ホバー時の×ボタン。空メモはフォーカスが外れた時点で自動削除 |
 | フォーカス戻し | Escape で本文エディタにフォーカスが戻る |
 
@@ -22,24 +22,23 @@
 - 横幅は固定（160px）、高さはテキスト量に応じて自動伸縮
 - フォントは本文と同じ游ゴシック系、12px
 - ボーダーは通常透明、ホバーで薄く、フォーカスでアクセントカラー
+- 初回表示時は位置確定後にフェードインする
 
 ---
 
-## 本文との位置関係（アンカリング）
+## 位置追跡のアーキテクチャ
 
-メモは「段落テキスト＋段落インデックス」のハイブリッドで本文に紐づく。
+メモはドキュメント内の「相対位置」で本文に紐づく。段落単位ではなく、ドキュメント全体の中での位置比率（0〜1）を保持する。
 
 ### 保存データ
 
-frontmatterに埋め込む:
+frontmatter に埋め込む:
 
 ```yaml
 memos:
   - id: a1b2c3d4
     side: right
-    paragraph: 3
-    anchorText: "吾輩は猫である。名前はまだ"
-    offsetY: 0.35
+    relativePos: 0.35
     content: "この話もう少し膨らませたい"
 ```
 
@@ -47,38 +46,28 @@ memos:
 |---|---|
 | `id` | メモの一意ID（UUID先頭8文字） |
 | `side` | `left` または `right`。どちらの余白に置くか |
-| `paragraph` | 紐づく段落のインデックス（0始まり）。フォールバック用 |
-| `anchorText` | 紐づく段落の先頭20文字。テキストマッチの主キー |
-| `offsetY` | 段落上端からの相対位置（0〜1）。長い段落内での高さ微調整用 |
+| `relativePos` | ドキュメント内の相対位置（0〜1）。`doc.content.size` に対する比率 |
 | `content` | メモの本文 |
 
-### 段落の解決順序
+### ランタイムの位置管理
 
-ファイルを開いた時や段落が変わった時、以下の順で段落を特定する:
+ProseMirror プラグイン (`memoDecorationPlugin.ts`) がメモの位置を管理する。
 
-1. **前方一致** — 全段落を走査して `anchorText` で始まるものを探す
-2. **部分一致** — anchorText の前半分で `includes` 検索。テキストが少し編集された場合に対応
-3. **インデックス** — 上記で見つからなければ `paragraph` を使う。段落数が減っていたらクランプ
+1. **ファイル読込時**: `relativePos` → `Math.round(doc.content.size * relativePos)` でドキュメント内の絶対位置 (pos) に変換
+2. **テキスト編集時**: `tr.mapping.map(pos)` で ProseMirror の Mapping が自動追跡。段落解決やテキストマッチは不要
+3. **ドラッグ移動時**: `view.posAtCoords()` でドロップ先の pos を取得し、プラグインに meta dispatch で即時反映
+4. **表示位置の計算**: プラグインの `view.update` コールバックで `coordsAtPos(pos)` → ピクセル座標を取得し、`style.top` を直接設定
+5. **保存時同期**: 500ms タイマーでプラグインの pos → `relativePos` に変換して React state に書き戻し
 
-### 同じ書き出しの段落が複数ある場合
+### React に頼らない位置更新
 
-テキストが一致した候補が複数あるとき、保存済み `paragraph` インデックスに最も近いものを選ぶ。
+位置の計算と DOM 操作は ProseMirror プラグインが直接行い、React のレンダーサイクルを経由しない。これにより段落のリフロー（改行発生）とメモの位置更新が同一フレームで完結し、ラグが発生しない。
 
 ```
-例: 「吾輩は猫である」で始まる段落が index 2, 5, 8 にある
-    保存データ: paragraph: 5
-    → 候補 [2, 5, 8] の中で 5 に最も近い 5 を返す
-
-    段落が1つ追加されて [2, 6, 9] にズレた場合
-    → 5 に最も近い 6 を返す
+テキスト編集 → tr.mapping.map(pos) → view.update → coordsAtPos → style.top 直接設定
 ```
 
-### アンカーの自動更新
-
-- 本文を編集すると MutationObserver が ProseMirror の DOM 変更を検知
-- 2秒の debounce 後に全メモの `anchorText` と `paragraph` を現在の DOM に合わせて更新
-- 段落の先頭テキストが書き換わっても、次回保存時には最新の値が記録される
-- `refreshAnchors()` は差分チェックして実際に変わったときだけ `onChange` を呼ぶので、無駄な保存は走らない
+React が担当するのはメモカードの描画（textarea、ボタン等）とメモ内容の状態管理のみ。
 
 ---
 
@@ -94,7 +83,9 @@ memos:
 
 | ファイル | 役割 |
 |---|---|
-| `src/components/SideMemoLayer.tsx` | メモレイヤー本体（作成・編集・削除・ドラッグ・アンカー解決） |
+| `src/components/memoDecorationPlugin.ts` | ProseMirror プラグイン（位置追跡・DOM 位置同期） |
+| `src/components/SideMemoLayer.tsx` | メモレイヤー（カード描画・作成・編集・削除・ドラッグ） |
 | `src/components/SideMemoLayer.css` | スタイル |
 | `src/lib/frontmatter.ts` | `Memo` 型定義、frontmatter のビルド/パース |
 | `src/hooks/useFile.ts` | `memos` 状態管理、`updateMemos` コールバック |
+| `src/components/Editor.tsx` | Milkdown エディタ設定、MemoSync（追加/削除通知・定期同期） |

@@ -37,10 +37,7 @@
   opacity: 0;
   transition: opacity 0.3s ease;
 }
-
-.memo-card.memo-card--positioned {
-  opacity: 1;
-}
+/* プラグインが el.style.opacity='1' で表示する（インラインスタイルが CSS に優先） */
 
 .memo-card--left {
   /* editor-container の左端から 50%-33ch (ガター幅) の右端に配置 */
