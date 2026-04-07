@@ -6,6 +6,8 @@
  * このモジュールはそのフロントマターを読み書きする共通処理。
  */
 
+import YAML from 'yaml';
+
 export interface Memo {
   id: string;
   side: 'left' | 'right';
@@ -28,36 +30,27 @@ export interface FileMetadata {
 
 /**
  * メタデータから YAML フロントマター文字列を組み立てる。
- *
- * 出力例:
- * ```
- * ---
- * uuid: abc-123
- * created: 2025-03-30T14:23:10
- * updated: 2025-03-30T14:23:10
- * title: 今日の日記
- * ---
- *
- * ```
  */
 export function buildFrontMatter(meta: FileMetadata): string {
-  let fm = `---\nuuid: ${meta.uuid}\ncreated: ${meta.createdAt}\nupdated: ${meta.updatedAt}\n`;
+  const data: Record<string, unknown> = {
+    uuid: meta.uuid,
+    created: meta.createdAt,
+    updated: meta.updatedAt,
+  };
   if (meta.title) {
-    fm += `title: ${meta.title}\n`;
+    data.title = meta.title;
   }
   if (meta.memos.length > 0) {
-    fm += 'memos:\n';
-    for (const m of meta.memos) {
-      fm += `  - id: ${m.id}\n`;
-      fm += `    side: ${m.side}\n`;
-      fm += `    paragraph: ${m.paragraph}\n`;
-      fm += `    anchorText: ${JSON.stringify(m.anchorText)}\n`;
-      fm += `    offsetY: ${m.offsetY}\n`;
-      fm += `    content: ${JSON.stringify(m.content)}\n`;
-    }
+    data.memos = meta.memos.map((m) => ({
+      id: m.id,
+      side: m.side,
+      paragraph: m.paragraph,
+      anchorText: m.anchorText,
+      offsetY: m.offsetY,
+      content: m.content,
+    }));
   }
-  fm += '---\n\n';
-  return fm;
+  return `---\n${YAML.stringify(data)}---\n\n`;
 }
 
 /**
@@ -86,49 +79,32 @@ export function parseFrontMatter(fileContent: string): {
   if (end === -1) {
     return { metadata: null, body: fileContent };
   }
-  const fm = fileContent.slice(4, end);
+  const fmRaw = fileContent.slice(4, end);
   const rest = fileContent.slice(end + 5); // skip '\n---\n'
   const body = rest.startsWith('\n') ? rest.slice(1) : rest;
 
-  const uuidMatch = fm.match(/^uuid:\s*(.+)$/m);
-  const createdMatch = fm.match(/^created:\s*(.+)$/m);
-  const updatedMatch = fm.match(/^updated:\s*(.+)$/m);
-  const titleMatch = fm.match(/^title:\s*(.+)$/m);
-
-  if (!uuidMatch || !createdMatch || !updatedMatch) {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = YAML.parse(fmRaw);
+  } catch {
     return { metadata: null, body: fileContent };
   }
 
-  // Parse memos block
+  if (!parsed || typeof parsed.uuid !== 'string' || !parsed.created || !parsed.updated) {
+    return { metadata: null, body: fileContent };
+  }
+
   const memos: Memo[] = [];
-  // fm末尾に改行を補って、最後のエントリも正規表現でマッチするようにする
-  const fmNorm = fm.endsWith('\n') ? fm : fm + '\n';
-  const memosBlockMatch = fmNorm.match(/^memos:\n((?:  - .*\n(?:    .*\n)*)*)/m);
-  if (memosBlockMatch) {
-    const entries = memosBlockMatch[1].split(/  - /).filter(Boolean);
-    for (const entry of entries) {
-      const idM = entry.match(/^id:\s*(.+)$/m);
-      const sideM = entry.match(/^side:\s*(.+)$/m);
-      const paraM = entry.match(/^paragraph:\s*(.+)$/m);
-      const anchorM = entry.match(/^anchorText:\s*(.+)$/m);
-      const offsetM = entry.match(/^offsetY:\s*(.+)$/m);
-      const contentM = entry.match(/^content:\s*(.+)$/m);
-      if (idM && sideM && paraM && contentM) {
-        let content = contentM[1].trim();
-        if (content.startsWith('"') && content.endsWith('"')) {
-          try { content = JSON.parse(content); } catch { /* use as-is */ }
-        }
-        let anchorText = anchorM ? anchorM[1].trim() : '';
-        if (anchorText.startsWith('"') && anchorText.endsWith('"')) {
-          try { anchorText = JSON.parse(anchorText); } catch { /* use as-is */ }
-        }
+  if (Array.isArray(parsed.memos)) {
+    for (const m of parsed.memos) {
+      if (m && typeof m.id === 'string' && m.side && m.paragraph != null && m.content != null) {
         memos.push({
-          id: idM[1].trim(),
-          side: sideM[1].trim() as 'left' | 'right',
-          paragraph: parseInt(paraM[1].trim(), 10),
-          anchorText,
-          offsetY: offsetM ? parseFloat(offsetM[1].trim()) : 0,
-          content,
+          id: m.id,
+          side: m.side as 'left' | 'right',
+          paragraph: Number(m.paragraph),
+          anchorText: typeof m.anchorText === 'string' ? m.anchorText : '',
+          offsetY: typeof m.offsetY === 'number' ? m.offsetY : 0,
+          content: String(m.content),
         });
       }
     }
@@ -136,10 +112,10 @@ export function parseFrontMatter(fileContent: string): {
 
   return {
     metadata: {
-      uuid: uuidMatch[1].trim(),
-      createdAt: createdMatch[1].trim(),
-      updatedAt: updatedMatch[1].trim(),
-      title: titleMatch ? titleMatch[1].trim() : null,
+      uuid: String(parsed.uuid),
+      createdAt: String(parsed.created),
+      updatedAt: String(parsed.updated),
+      title: typeof parsed.title === 'string' ? parsed.title : null,
       memos,
     },
     body,
