@@ -84,21 +84,62 @@ function attachAnchor(container: HTMLElement, memo: Omit<Memo, 'anchorText' | 'p
   return { ...memo, paragraph: clamped, anchorText };
 }
 
+/**
+ * 全メモのアンカーを現在のDOM状態に合わせて更新する。
+ * テキストマッチで段落を解決し、anchorText と paragraph を最新にする。
+ * 変更があった場合だけ新しい配列を返す。
+ */
+function refreshAnchors(container: HTMLElement, memos: Memo[]): Memo[] | null {
+  const paragraphs = getParagraphElements(container);
+  if (paragraphs.length === 0) return null;
+
+  let changed = false;
+  const updated = memos.map((m) => {
+    const resolved = resolveParagraphIndex(paragraphs, m);
+    const newAnchor = paragraphs[resolved] ? extractAnchorText(paragraphs[resolved]) : '';
+    if (m.paragraph !== resolved || m.anchorText !== newAnchor) {
+      changed = true;
+      return { ...m, paragraph: resolved, anchorText: newAnchor };
+    }
+    return m;
+  });
+  return changed ? updated : null;
+}
+
 export default function SideMemoLayer({ memos, onChange, containerRef }: SideMemoLayerProps) {
   // 段落位置が変わったら再計算するためのトリガー
   const [, setTick] = useState(0);
-  const reposition = useCallback(() => setTick((t) => t + 1), []);
+  const memosRef = useRef(memos);
+  memosRef.current = memos;
 
-  // MutationObserver: ProseMirror の DOM 変更を監視して位置を再計算
+  // MutationObserver: ProseMirror の DOM 変更を監視して位置を再計算 + アンカー更新
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const pm = container.querySelector('.ProseMirror');
     if (!pm) return;
-    const observer = new MutationObserver(reposition);
+    let anchorTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const observer = new MutationObserver((mutations) => {
+      // 位置の再描画は常に行う
+      setTick((t) => t + 1);
+
+      // アンカーテキストを最新のDOMに合わせて更新（debounce）
+      // 段落の追加/削除でも、段落内テキスト編集でも発火する
+      if (memosRef.current.length > 0) {
+        if (anchorTimer) clearTimeout(anchorTimer);
+        anchorTimer = setTimeout(() => {
+          const updated = refreshAnchors(container, memosRef.current);
+          if (updated) onChange(updated);
+        }, 2000);
+      }
+    });
     observer.observe(pm, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, [containerRef, reposition]);
+    return () => {
+      observer.disconnect();
+      if (anchorTimer) clearTimeout(anchorTimer);
+    };
+  }, [containerRef, onChange]);
 
   // --- ダブルクリックでメモ作成 ---
   const handleGutterDoubleClick = useCallback(
