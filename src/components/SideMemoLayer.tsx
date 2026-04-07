@@ -1,28 +1,77 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import type { Memo } from '../lib/frontmatter';
 import './SideMemoLayer.css';
 
 interface SideMemoLayerProps {
   memos: Memo[];
   onChange: (memos: Memo[]) => void;
-  /** editor-container の ref。スクロール位置の基準に使う */
+  /** editor-container の ref。段落DOM取得の基準 */
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
+/** ProseMirror 内の段落（p, h1-h6）要素を順番に取得 */
+function getParagraphElements(container: HTMLElement): HTMLElement[] {
+  const pm = container.querySelector('.ProseMirror');
+  if (!pm) return [];
+  return Array.from(pm.querySelectorAll(':scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > blockquote, :scope > ul, :scope > ol, :scope > hr'));
+}
+
+/** クリック位置から最も近い段落インデックスを返す */
+function findNearestParagraph(container: HTMLElement, clientY: number): number {
+  const paragraphs = getParagraphElements(container);
+  if (paragraphs.length === 0) return 0;
+
+  let closest = 0;
+  let minDist = Infinity;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const rect = paragraphs[i].getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const dist = Math.abs(clientY - center);
+    if (dist < minDist) {
+      minDist = dist;
+      closest = i;
+    }
+  }
+  return closest;
+}
+
+/** 段落インデックスから Y 座標（container 基準）を算出 */
+function getYForParagraph(container: HTMLElement, paragraphIndex: number): number | null {
+  const paragraphs = getParagraphElements(container);
+  const clamped = Math.min(paragraphIndex, paragraphs.length - 1);
+  const el = paragraphs[clamped];
+  if (!el) return null;
+  const containerRect = container.getBoundingClientRect();
+  return el.getBoundingClientRect().top - containerRect.top + container.scrollTop;
+}
+
 export default function SideMemoLayer({ memos, onChange, containerRef }: SideMemoLayerProps) {
+  // 段落位置が変わったら再計算するためのトリガー
+  const [, setTick] = useState(0);
+  const reposition = useCallback(() => setTick((t) => t + 1), []);
+
+  // MutationObserver: ProseMirror の DOM 変更を監視して位置を再計算
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const pm = container.querySelector('.ProseMirror');
+    if (!pm) return;
+    const observer = new MutationObserver(reposition);
+    observer.observe(pm, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [containerRef, reposition]);
+
   // --- ダブルクリックでメモ作成 ---
   const handleGutterDoubleClick = useCallback(
     (side: 'left' | 'right', e: React.MouseEvent) => {
       const container = containerRef.current;
       if (!container) return;
-      // クリック位置をコンテナ内の Y 座標に変換
-      const rect = container.getBoundingClientRect();
-      const y = e.clientY - rect.top + container.scrollTop;
+      const paragraph = findNearestParagraph(container, e.clientY);
 
       const newMemo: Memo = {
         id: crypto.randomUUID().slice(0, 8),
         side,
-        y,
+        paragraph,
         content: '',
       };
       onChange([...memos, newMemo]);
@@ -38,7 +87,7 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     [memos, onChange]
   );
 
-  // --- メモ削除（空メモで Backspace / ×ボタン） ---
+  // --- メモ削除 ---
   const handleDelete = useCallback(
     (id: string) => {
       onChange(memos.filter((m) => m.id !== id));
@@ -46,16 +95,15 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     [memos, onChange]
   );
 
-  // --- ドラッグで Y 位置変更 ---
+  // --- ドラッグで段落アンカーを変更 ---
   const handleDragStart = useCallback(
-    (id: string, startClientY: number) => {
-      const memo = memos.find((m) => m.id === id);
-      if (!memo) return;
-      const startY = memo.y;
+    (id: string, _startClientY: number) => {
+      const container = containerRef.current;
+      if (!container) return;
 
       const onMove = (ev: MouseEvent) => {
-        const dy = ev.clientY - startClientY;
-        onChange(memos.map((m) => (m.id === id ? { ...m, y: Math.max(0, startY + dy) } : m)));
+        const newPara = findNearestParagraph(container, ev.clientY);
+        onChange(memos.map((m) => (m.id === id ? { ...m, paragraph: newPara } : m)));
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -64,8 +112,18 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     },
-    [memos, onChange]
+    [memos, onChange, containerRef]
   );
+
+  // --- 各メモの Y 座標を算出 ---
+  const container = containerRef.current;
+  const memoPositions = new Map<string, number>();
+  if (container) {
+    for (const m of memos) {
+      const y = getYForParagraph(container, m.paragraph);
+      if (y != null) memoPositions.set(m.id, y);
+    }
+  }
 
   return (
     <div className="side-memo-layer">
@@ -80,6 +138,7 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
             <MemoItem
               key={m.id}
               memo={m}
+              y={memoPositions.get(m.id) ?? 0}
               onChange={handleMemoChange}
               onDelete={handleDelete}
               onDragStart={handleDragStart}
@@ -97,6 +156,7 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
             <MemoItem
               key={m.id}
               memo={m}
+              y={memoPositions.get(m.id) ?? 0}
               onChange={handleMemoChange}
               onDelete={handleDelete}
               onDragStart={handleDragStart}
@@ -110,13 +170,16 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
 // --- 個々のメモ ---
 interface MemoItemProps {
   memo: Memo;
+  y: number;
   onChange: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onDragStart: (id: string, startClientY: number) => void;
 }
 
-function MemoItem({ memo, onChange, onDelete, onDragStart }: MemoItemProps) {
+function MemoItem({ memo, y, onChange, onDelete, onDragStart }: MemoItemProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [focused, setFocused] = useState(false);
+  const isNew = useRef(memo.content === '');
 
   // 自動高さ調整
   const autoResize = useCallback(() => {
@@ -132,19 +195,21 @@ function MemoItem({ memo, onChange, onDelete, onDragStart }: MemoItemProps) {
 
   // 新規作成時にフォーカス
   useEffect(() => {
-    if (memo.content === '') {
+    if (isNew.current) {
       textareaRef.current?.focus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleBlur = useCallback(() => {
+    setFocused(false);
+    // 空メモはフォーカスが外れたら削除
+    if (memo.content.trim() === '') {
+      onDelete(memo.id);
+    }
+  }, [memo.content, memo.id, onDelete]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      // 空メモでBackspace → 削除
-      if (e.key === 'Backspace' && memo.content === '') {
-        e.preventDefault();
-        onDelete(memo.id);
-      }
       // Escape → エディタにフォーカスを戻す
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -154,13 +219,13 @@ function MemoItem({ memo, onChange, onDelete, onDragStart }: MemoItemProps) {
       // メモ内のキーイベントが親に伝搬しないようにする
       e.stopPropagation();
     },
-    [memo.content, memo.id, onDelete]
+    []
   );
 
   return (
     <div
-      className={`side-memo side-memo--${memo.side}`}
-      style={{ top: memo.y }}
+      className={`side-memo side-memo--${memo.side}${focused ? ' side-memo--focused' : ''}`}
+      style={{ top: y }}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
     >
@@ -182,6 +247,8 @@ function MemoItem({ memo, onChange, onDelete, onDragStart }: MemoItemProps) {
           onChange(memo.id, e.target.value);
           autoResize();
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
     </div>

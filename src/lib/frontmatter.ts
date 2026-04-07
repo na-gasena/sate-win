@@ -9,7 +9,8 @@
 export interface Memo {
   id: string;
   side: 'left' | 'right';
-  y: number;
+  /** 紐づく段落のインデックス（0始まり） */
+  paragraph: number;
   content: string;
 }
 
@@ -45,7 +46,7 @@ export function buildFrontMatter(meta: FileMetadata): string {
     for (const m of meta.memos) {
       fm += `  - id: ${m.id}\n`;
       fm += `    side: ${m.side}\n`;
-      fm += `    y: ${m.y}\n`;
+      fm += `    paragraph: ${m.paragraph}\n`;
       fm += `    content: ${JSON.stringify(m.content)}\n`;
     }
   }
@@ -100,9 +101,9 @@ export function parseFrontMatter(fileContent: string): {
     for (const entry of entries) {
       const idM = entry.match(/^id:\s*(.+)$/m);
       const sideM = entry.match(/^side:\s*(.+)$/m);
-      const yM = entry.match(/^y:\s*(.+)$/m);
+      const paraM = entry.match(/^paragraph:\s*(.+)$/m);
       const contentM = entry.match(/^content:\s*(.+)$/m);
-      if (idM && sideM && yM && contentM) {
+      if (idM && sideM && paraM && contentM) {
         let content = contentM[1].trim();
         // Parse JSON-encoded string or plain string
         if (content.startsWith('"') && content.endsWith('"')) {
@@ -111,7 +112,7 @@ export function parseFrontMatter(fileContent: string): {
         memos.push({
           id: idM[1].trim(),
           side: sideM[1].trim() as 'left' | 'right',
-          y: parseFloat(yM[1].trim()),
+          paragraph: parseInt(paraM[1].trim(), 10),
           content,
         });
       }
