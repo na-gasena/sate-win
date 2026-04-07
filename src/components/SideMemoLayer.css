@@ -33,7 +33,6 @@
   position: absolute;
   width: 160px;
   pointer-events: auto;
-  opacity: 0.35;
   transition: opacity 0.2s ease;
 }
 
