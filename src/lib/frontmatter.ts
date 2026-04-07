@@ -9,8 +9,10 @@
 export interface Memo {
   id: string;
   side: 'left' | 'right';
-  /** 紐づく段落のインデックス（0始まり） */
+  /** 紐づく段落のインデックス（0始まり）。フォールバック用 */
   paragraph: number;
+  /** 紐づく段落の先頭テキスト。テキストマッチで段落を特定する */
+  anchorText: string;
   content: string;
 }
 
@@ -47,6 +49,7 @@ export function buildFrontMatter(meta: FileMetadata): string {
       fm += `  - id: ${m.id}\n`;
       fm += `    side: ${m.side}\n`;
       fm += `    paragraph: ${m.paragraph}\n`;
+      fm += `    anchorText: ${JSON.stringify(m.anchorText)}\n`;
       fm += `    content: ${JSON.stringify(m.content)}\n`;
     }
   }
@@ -102,17 +105,22 @@ export function parseFrontMatter(fileContent: string): {
       const idM = entry.match(/^id:\s*(.+)$/m);
       const sideM = entry.match(/^side:\s*(.+)$/m);
       const paraM = entry.match(/^paragraph:\s*(.+)$/m);
+      const anchorM = entry.match(/^anchorText:\s*(.+)$/m);
       const contentM = entry.match(/^content:\s*(.+)$/m);
       if (idM && sideM && paraM && contentM) {
         let content = contentM[1].trim();
-        // Parse JSON-encoded string or plain string
         if (content.startsWith('"') && content.endsWith('"')) {
           try { content = JSON.parse(content); } catch { /* use as-is */ }
+        }
+        let anchorText = anchorM ? anchorM[1].trim() : '';
+        if (anchorText.startsWith('"') && anchorText.endsWith('"')) {
+          try { anchorText = JSON.parse(anchorText); } catch { /* use as-is */ }
         }
         memos.push({
           id: idM[1].trim(),
           side: sideM[1].trim() as 'left' | 'right',
           paragraph: parseInt(paraM[1].trim(), 10),
+          anchorText,
           content,
         });
       }

@@ -2,6 +2,9 @@ import { useCallback, useRef, useEffect, useState } from 'react';
 import type { Memo } from '../lib/frontmatter';
 import './SideMemoLayer.css';
 
+/** アンカーテキストの最大長 */
+const ANCHOR_TEXT_LEN = 20;
+
 interface SideMemoLayerProps {
   memos: Memo[];
   onChange: (memos: Memo[]) => void;
@@ -9,11 +12,39 @@ interface SideMemoLayerProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
-/** ProseMirror 内の段落（p, h1-h6）要素を順番に取得 */
+/** ProseMirror 内の段落（p, h1-h6 等）要素を順番に取得 */
 function getParagraphElements(container: HTMLElement): HTMLElement[] {
   const pm = container.querySelector('.ProseMirror');
   if (!pm) return [];
   return Array.from(pm.querySelectorAll(':scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > blockquote, :scope > ul, :scope > ol, :scope > hr'));
+}
+
+/** 段落要素からプレーンテキストの先頭N文字を抽出 */
+function extractAnchorText(el: HTMLElement): string {
+  return (el.textContent ?? '').trim().slice(0, ANCHOR_TEXT_LEN);
+}
+
+/**
+ * メモのアンカーテキストで段落を検索し、インデックスを返す。
+ * 見つからなければ保存済みの paragraph インデックスにフォールバック。
+ */
+function resolveParagraphIndex(paragraphs: HTMLElement[], memo: Memo): number {
+  if (memo.anchorText) {
+    // まず完全前方一致で探す
+    for (let i = 0; i < paragraphs.length; i++) {
+      const text = (paragraphs[i].textContent ?? '').trim();
+      if (text.startsWith(memo.anchorText)) return i;
+    }
+    // 部分一致でフォールバック（テキストが少し編集された場合）
+    for (let i = 0; i < paragraphs.length; i++) {
+      const text = (paragraphs[i].textContent ?? '').trim();
+      if (memo.anchorText.length >= 4 && text.includes(memo.anchorText.slice(0, Math.ceil(memo.anchorText.length / 2)))) {
+        return i;
+      }
+    }
+  }
+  // テキストマッチ失敗 → インデックスでフォールバック（範囲内にクランプ）
+  return Math.min(memo.paragraph, Math.max(paragraphs.length - 1, 0));
 }
 
 /** クリック位置から最も近い段落インデックスを返す */
@@ -45,6 +76,14 @@ function getYForParagraph(container: HTMLElement, paragraphIndex: number): numbe
   return el.getBoundingClientRect().top - containerRect.top + container.scrollTop;
 }
 
+/** メモ作成/移動時に anchorText と paragraph を設定して返す */
+function attachAnchor(container: HTMLElement, memo: Omit<Memo, 'anchorText' | 'paragraph'>, paragraphIndex: number): Memo {
+  const paragraphs = getParagraphElements(container);
+  const clamped = Math.min(paragraphIndex, Math.max(paragraphs.length - 1, 0));
+  const anchorText = paragraphs[clamped] ? extractAnchorText(paragraphs[clamped]) : '';
+  return { ...memo, paragraph: clamped, anchorText };
+}
+
 export default function SideMemoLayer({ memos, onChange, containerRef }: SideMemoLayerProps) {
   // 段落位置が変わったら再計算するためのトリガー
   const [, setTick] = useState(0);
@@ -66,14 +105,12 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     (side: 'left' | 'right', e: React.MouseEvent) => {
       const container = containerRef.current;
       if (!container) return;
-      const paragraph = findNearestParagraph(container, e.clientY);
-
-      const newMemo: Memo = {
-        id: crypto.randomUUID().slice(0, 8),
-        side,
-        paragraph,
-        content: '',
-      };
+      const paragraphIndex = findNearestParagraph(container, e.clientY);
+      const newMemo = attachAnchor(
+        container,
+        { id: crypto.randomUUID().slice(0, 8), side, content: '' },
+        paragraphIndex,
+      );
       onChange([...memos, newMemo]);
     },
     [memos, onChange, containerRef]
@@ -103,7 +140,10 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
 
       const onMove = (ev: MouseEvent) => {
         const newPara = findNearestParagraph(container, ev.clientY);
-        onChange(memos.map((m) => (m.id === id ? { ...m, paragraph: newPara } : m)));
+        onChange(memos.map((m) => {
+          if (m.id !== id) return m;
+          return attachAnchor(container, m, newPara);
+        }));
       };
       const onUp = () => {
         document.removeEventListener('mousemove', onMove);
@@ -115,12 +155,14 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     [memos, onChange, containerRef]
   );
 
-  // --- 各メモの Y 座標を算出 ---
+  // --- 各メモの表示 Y 座標を算出（テキストアンカー → インデックスのフォールバック） ---
   const container = containerRef.current;
   const memoPositions = new Map<string, number>();
   if (container) {
+    const paragraphs = getParagraphElements(container);
     for (const m of memos) {
-      const y = getYForParagraph(container, m.paragraph);
+      const resolvedIndex = resolveParagraphIndex(paragraphs, m);
+      const y = getYForParagraph(container, resolvedIndex);
       if (y != null) memoPositions.set(m.id, y);
     }
   }
