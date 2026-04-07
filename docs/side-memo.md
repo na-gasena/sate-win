@@ -40,6 +40,7 @@ memos:
     side: right
     paragraph: 3
     anchorText: "吾輩は猫である。名前はまだ"
+    offsetY: 0.35
     content: "この話もう少し膨らませたい"
 ```
 
@@ -49,6 +50,7 @@ memos:
 | `side` | `left` または `right`。どちらの余白に置くか |
 | `paragraph` | 紐づく段落のインデックス（0始まり）。フォールバック用 |
 | `anchorText` | 紐づく段落の先頭20文字。テキストマッチの主キー |
+| `offsetY` | 段落上端からの相対位置（0〜1）。長い段落内での高さ微調整用 |
 | `content` | メモの本文 |
 
 ### 段落の解決順序

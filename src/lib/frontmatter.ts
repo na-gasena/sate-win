@@ -13,6 +13,8 @@ export interface Memo {
   paragraph: number;
   /** 紐づく段落の先頭テキスト。テキストマッチで段落を特定する */
   anchorText: string;
+  /** 段落上端からの相対位置（0〜1）。長い段落内での微調整用 */
+  offsetY: number;
   content: string;
 }
 
@@ -50,6 +52,7 @@ export function buildFrontMatter(meta: FileMetadata): string {
       fm += `    side: ${m.side}\n`;
       fm += `    paragraph: ${m.paragraph}\n`;
       fm += `    anchorText: ${JSON.stringify(m.anchorText)}\n`;
+      fm += `    offsetY: ${m.offsetY}\n`;
       fm += `    content: ${JSON.stringify(m.content)}\n`;
     }
   }
@@ -106,6 +109,7 @@ export function parseFrontMatter(fileContent: string): {
       const sideM = entry.match(/^side:\s*(.+)$/m);
       const paraM = entry.match(/^paragraph:\s*(.+)$/m);
       const anchorM = entry.match(/^anchorText:\s*(.+)$/m);
+      const offsetM = entry.match(/^offsetY:\s*(.+)$/m);
       const contentM = entry.match(/^content:\s*(.+)$/m);
       if (idM && sideM && paraM && contentM) {
         let content = contentM[1].trim();
@@ -121,6 +125,7 @@ export function parseFrontMatter(fileContent: string): {
           side: sideM[1].trim() as 'left' | 'right',
           paragraph: parseInt(paraM[1].trim(), 10),
           anchorText,
+          offsetY: offsetM ? parseFloat(offsetM[1].trim()) : 0,
           content,
         });
       }

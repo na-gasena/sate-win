@@ -75,10 +75,10 @@ function resolveParagraphIndex(paragraphs: HTMLElement[], memo: Memo): number {
   return Math.min(memo.paragraph, Math.max(paragraphs.length - 1, 0));
 }
 
-/** クリック位置から最も近い段落インデックスを返す */
-function findNearestParagraph(container: HTMLElement, clientY: number): number {
+/** クリック位置から最も近い段落インデックスと段落内オフセット(0〜1)を返す */
+function findNearestParagraph(container: HTMLElement, clientY: number): { index: number; offsetY: number } {
   const paragraphs = getParagraphElements(container);
-  if (paragraphs.length === 0) return 0;
+  if (paragraphs.length === 0) return { index: 0, offsetY: 0 };
 
   let closest = 0;
   let minDist = Infinity;
@@ -91,17 +91,21 @@ function findNearestParagraph(container: HTMLElement, clientY: number): number {
       closest = i;
     }
   }
-  return closest;
+  // 段落内の相対位置を算出
+  const rect = paragraphs[closest].getBoundingClientRect();
+  const offsetY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  return { index: closest, offsetY };
 }
 
-/** 段落インデックスから Y 座標（container 基準）を算出 */
-function getYForParagraph(container: HTMLElement, paragraphIndex: number): number | null {
+/** 段落インデックスと段落内オフセットから Y 座標（container 基準）を算出 */
+function getYForParagraph(container: HTMLElement, paragraphIndex: number, offsetY: number): number | null {
   const paragraphs = getParagraphElements(container);
   const clamped = Math.min(paragraphIndex, paragraphs.length - 1);
   const el = paragraphs[clamped];
   if (!el) return null;
   const containerRect = container.getBoundingClientRect();
-  return el.getBoundingClientRect().top - containerRect.top + container.scrollTop;
+  const elRect = el.getBoundingClientRect();
+  return elRect.top - containerRect.top + container.scrollTop + elRect.height * offsetY;
 }
 
 /** メモ作成/移動時に anchorText と paragraph を設定して返す */
@@ -174,11 +178,11 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     (side: 'left' | 'right', e: React.MouseEvent) => {
       const container = containerRef.current;
       if (!container) return;
-      const paragraphIndex = findNearestParagraph(container, e.clientY);
+      const { index, offsetY } = findNearestParagraph(container, e.clientY);
       const newMemo = attachAnchor(
         container,
-        { id: crypto.randomUUID().slice(0, 8), side, content: '' },
-        paragraphIndex,
+        { id: crypto.randomUUID().slice(0, 8), side, offsetY, content: '' },
+        index,
       );
       onChange([...memos, newMemo]);
     },
@@ -208,10 +212,10 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
       if (!container) return;
 
       const onMove = (ev: MouseEvent) => {
-        const newPara = findNearestParagraph(container, ev.clientY);
+        const { index, offsetY } = findNearestParagraph(container, ev.clientY);
         onChange(memos.map((m) => {
           if (m.id !== id) return m;
-          return attachAnchor(container, m, newPara);
+          return attachAnchor(container, { ...m, offsetY }, index);
         }));
       };
       const onUp = () => {
@@ -231,7 +235,7 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
     const paragraphs = getParagraphElements(container);
     for (const m of memos) {
       const resolvedIndex = resolveParagraphIndex(paragraphs, m);
-      const y = getYForParagraph(container, resolvedIndex);
+      const y = getYForParagraph(container, resolvedIndex, m.offsetY);
       if (y != null) memoPositions.set(m.id, y);
     }
   }
