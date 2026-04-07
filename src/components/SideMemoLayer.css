@@ -1,0 +1,122 @@
+/* サイドメモ: 余白にダブルクリックで付箋を貼る */
+
+.side-memo-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* 左右の余白だけクリック可能にする */
+.side-memo-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.side-memo-gutter-left {
+  left: 0;
+  width: calc(50% - 33ch);
+}
+
+.side-memo-gutter-right {
+  right: 0;
+  width: calc(50% - 33ch);
+}
+
+/* 個々のメモ */
+.side-memo {
+  position: absolute;
+  width: 160px;
+  pointer-events: auto;
+}
+
+.side-memo--left {
+  right: 16px;
+}
+
+.side-memo--right {
+  left: 16px;
+}
+
+.side-memo-textarea {
+  width: 100%;
+  min-height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 6px 8px;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.side-memo-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.side-memo-textarea:hover {
+  border-color: #3a3a38;
+}
+
+.side-memo-textarea:focus {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* ドラッグハンドル（上辺） */
+.side-memo-drag {
+  height: 6px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.side-memo-drag:active {
+  cursor: grabbing;
+}
+
+.side-memo:hover .side-memo-drag {
+  opacity: 1;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+  border-radius: 3px 3px 0 0;
+}
+
+/* 削除ボタン */
+.side-memo-delete {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-muted);
+  color: var(--bg);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.side-memo:hover .side-memo-delete {
+  opacity: 0.6;
+}
+
+.side-memo-delete:hover {
+  opacity: 1 !important;
+}

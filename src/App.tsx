@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import EditorComponent from './components/Editor';
 import TitleInput from './components/TitleInput';
 import WordCount from './components/WordCount';
 import ShortcutHelp from './components/ShortcutHelp';
 import SettingsDialog from './components/SettingsDialog';
 import FileOpenDialog from './components/FileOpenDialog';
+import SideMemoLayer from './components/SideMemoLayer';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import { initDatabase } from './lib/db';
@@ -13,10 +14,11 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { fileName, content, title, updateContent, updateTitle, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, title, memos, updateContent, updateTitle, updateMemos, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const charCount = useMemo(() => {
     if (!content) return 0;
@@ -101,11 +103,17 @@ function App() {
 
   return (
     <div className="app" onClick={handleClick}>
-      <div className="editor-container">
+      <div className="editor-container" ref={editorContainerRef}>
         <div className="editor-wrapper">
           <TitleInput key={`title-${fileName}`} value={title} onChange={updateTitle} />
           <EditorComponent key={fileName} initialContent={content} onChange={updateContent} />
         </div>
+        <SideMemoLayer
+          key={`memos-${fileName}`}
+          memos={memos}
+          onChange={updateMemos}
+          containerRef={editorContainerRef}
+        />
       </div>
       {fileName && <div className="file-name">{fileName.replace(/\.md$/, '')}</div>}
       <WordCount count={charCount} />

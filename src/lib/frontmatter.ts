@@ -6,11 +6,19 @@
  * このモジュールはそのフロントマターを読み書きする共通処理。
  */
 
+export interface Memo {
+  id: string;
+  side: 'left' | 'right';
+  y: number;
+  content: string;
+}
+
 export interface FileMetadata {
   uuid: string;
   createdAt: string;
   updatedAt: string;
   title: string | null;
+  memos: Memo[];
 }
 
 /**
@@ -31,6 +39,15 @@ export function buildFrontMatter(meta: FileMetadata): string {
   let fm = `---\nuuid: ${meta.uuid}\ncreated: ${meta.createdAt}\nupdated: ${meta.updatedAt}\n`;
   if (meta.title) {
     fm += `title: ${meta.title}\n`;
+  }
+  if (meta.memos.length > 0) {
+    fm += 'memos:\n';
+    for (const m of meta.memos) {
+      fm += `  - id: ${m.id}\n`;
+      fm += `    side: ${m.side}\n`;
+      fm += `    y: ${m.y}\n`;
+      fm += `    content: ${JSON.stringify(m.content)}\n`;
+    }
   }
   fm += '---\n\n';
   return fm;
@@ -75,12 +92,39 @@ export function parseFrontMatter(fileContent: string): {
     return { metadata: null, body: fileContent };
   }
 
+  // Parse memos block
+  const memos: Memo[] = [];
+  const memosBlockMatch = fm.match(/^memos:\n((?:  - .*\n(?:    .*\n)*)*)/m);
+  if (memosBlockMatch) {
+    const entries = memosBlockMatch[1].split(/  - /).filter(Boolean);
+    for (const entry of entries) {
+      const idM = entry.match(/^id:\s*(.+)$/m);
+      const sideM = entry.match(/^side:\s*(.+)$/m);
+      const yM = entry.match(/^y:\s*(.+)$/m);
+      const contentM = entry.match(/^content:\s*(.+)$/m);
+      if (idM && sideM && yM && contentM) {
+        let content = contentM[1].trim();
+        // Parse JSON-encoded string or plain string
+        if (content.startsWith('"') && content.endsWith('"')) {
+          try { content = JSON.parse(content); } catch { /* use as-is */ }
+        }
+        memos.push({
+          id: idM[1].trim(),
+          side: sideM[1].trim() as 'left' | 'right',
+          y: parseFloat(yM[1].trim()),
+          content,
+        });
+      }
+    }
+  }
+
   return {
     metadata: {
       uuid: uuidMatch[1].trim(),
       createdAt: createdMatch[1].trim(),
       updatedAt: updatedMatch[1].trim(),
       title: titleMatch ? titleMatch[1].trim() : null,
+      memos,
     },
     body,
   };
