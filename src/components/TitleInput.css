@@ -13,8 +13,8 @@
   padding: 0 0 4px;
   margin: 0;
   font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
-  font-size: 18px;
-  font-weight: 400;
+  font-size: 24px;
+  font-weight: 600;
   color: var(--text);
   caret-color: var(--text);
   font-feature-settings: 'palt' 1, 'kern' 1;

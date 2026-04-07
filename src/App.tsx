@@ -37,8 +37,10 @@ function App() {
     return count;
   }, [content]);
 
-  const handleClick = useCallback(() => {
+  const handleClick = useCallback((e: React.MouseEvent) => {
     if (showShortcuts || showSettings) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('.title-input')) return;
     const el = document.querySelector('.ProseMirror') as HTMLElement | null;
     if (el && document.activeElement !== el) {
       el.focus();
