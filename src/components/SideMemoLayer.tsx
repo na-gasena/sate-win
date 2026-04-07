@@ -213,7 +213,8 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
 
       const onMove = (ev: MouseEvent) => {
         const { index, offsetY } = findNearestParagraph(container, ev.clientY);
-        onChange(memos.map((m) => {
+        // memosRef で最新の memos を参照（ドラッグ中の stale closure 回避）
+        onChange(memosRef.current.map((m) => {
           if (m.id !== id) return m;
           return attachAnchor(container, { ...m, offsetY }, index);
         }));
@@ -225,7 +226,7 @@ export default function SideMemoLayer({ memos, onChange, containerRef }: SideMem
       document.addEventListener('mousemove', onMove);
       document.addEventListener('mouseup', onUp);
     },
-    [memos, onChange, containerRef]
+    [onChange, containerRef]
   );
 
   // --- 各メモの表示 Y 座標を算出（テキストアンカー → インデックスのフォールバック） ---

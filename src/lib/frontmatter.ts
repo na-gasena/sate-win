@@ -101,7 +101,9 @@ export function parseFrontMatter(fileContent: string): {
 
   // Parse memos block
   const memos: Memo[] = [];
-  const memosBlockMatch = fm.match(/^memos:\n((?:  - .*\n(?:    .*\n)*)*)/m);
+  // fm末尾に改行を補って、最後のエントリも正規表現でマッチするようにする
+  const fmNorm = fm.endsWith('\n') ? fm : fm + '\n';
+  const memosBlockMatch = fmNorm.match(/^memos:\n((?:  - .*\n(?:    .*\n)*)*)/m);
   if (memosBlockMatch) {
     const entries = memosBlockMatch[1].split(/  - /).filter(Boolean);
     for (const entry of entries) {
