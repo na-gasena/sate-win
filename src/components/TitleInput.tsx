@@ -18,7 +18,7 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
   );
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
       e.preventDefault();
       const editor = document.querySelector('.ProseMirror') as HTMLElement | null;
       editor?.focus();
