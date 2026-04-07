@@ -25,21 +25,49 @@ function extractAnchorText(el: HTMLElement): string {
 }
 
 /**
+ * テキストマッチした候補の中で、保存済みインデックスに最も近いものを返す。
+ * 同一書き出しの段落が複数あっても元の位置付近のものが選ばれる。
+ */
+function closestToSaved(candidates: number[], savedIndex: number): number {
+  let best = candidates[0];
+  let bestDist = Math.abs(best - savedIndex);
+  for (let i = 1; i < candidates.length; i++) {
+    const dist = Math.abs(candidates[i] - savedIndex);
+    if (dist < bestDist) {
+      best = candidates[i];
+      bestDist = dist;
+    }
+  }
+  return best;
+}
+
+/**
  * メモのアンカーテキストで段落を検索し、インデックスを返す。
+ * 同じテキストの段落が複数あるとき、保存済みインデックスに近い方を優先。
  * 見つからなければ保存済みの paragraph インデックスにフォールバック。
  */
 function resolveParagraphIndex(paragraphs: HTMLElement[], memo: Memo): number {
   if (memo.anchorText) {
-    // まず完全前方一致で探す
+    // 前方一致する候補を全て集める
+    const exactCandidates: number[] = [];
     for (let i = 0; i < paragraphs.length; i++) {
       const text = (paragraphs[i].textContent ?? '').trim();
-      if (text.startsWith(memo.anchorText)) return i;
+      if (text.startsWith(memo.anchorText)) exactCandidates.push(i);
     }
-    // 部分一致でフォールバック（テキストが少し編集された場合）
-    for (let i = 0; i < paragraphs.length; i++) {
-      const text = (paragraphs[i].textContent ?? '').trim();
-      if (memo.anchorText.length >= 4 && text.includes(memo.anchorText.slice(0, Math.ceil(memo.anchorText.length / 2)))) {
-        return i;
+    if (exactCandidates.length > 0) {
+      return closestToSaved(exactCandidates, memo.paragraph);
+    }
+
+    // 部分一致の候補を集める（テキストが少し編集された場合）
+    if (memo.anchorText.length >= 4) {
+      const prefix = memo.anchorText.slice(0, Math.ceil(memo.anchorText.length / 2));
+      const partialCandidates: number[] = [];
+      for (let i = 0; i < paragraphs.length; i++) {
+        const text = (paragraphs[i].textContent ?? '').trim();
+        if (text.includes(prefix)) partialCandidates.push(i);
+      }
+      if (partialCandidates.length > 0) {
+        return closestToSaved(partialCandidates, memo.paragraph);
       }
     }
   }
