@@ -16,6 +16,7 @@
   justify-content: center;
   align-items: center;
   box-sizing: border-box;
+  position: relative;
 }
 
 .editor-wrapper {
@@ -31,8 +32,8 @@
   font-size: 18px;
   color: var(--text);
 
-  /* 約物のみ半角化 (halt) + カーニング。palt は本文全体を詰めるため使わない */
-  font-feature-settings: 'halt' 1, 'kern' 1;
+  /* 連続約物のみ詰め (chws) + カーニング。halt は単独句読点も半角化するため使わない */
+  font-feature-settings: 'chws' 1, 'kern' 1;
   font-kerning: normal;
 
   /* 禁則処理: JIS X 4051 厳格モード — 行頭に句読点・閉じ括弧を許さない */

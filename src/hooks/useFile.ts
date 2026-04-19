@@ -6,7 +6,7 @@ import {
   mkdir,
   exists,
 } from '@tauri-apps/plugin-fs';
-import { type FileMetadata, buildFrontMatter, parseFrontMatter, extractFirstLine } from '../lib/frontmatter';
+import { type FileMetadata, type Memo, buildFrontMatter, parseFrontMatter, extractFirstLine } from '../lib/frontmatter';
 import { upsertFile, updateSearchIndex, addSnapshot } from '../lib/db';
 
 function generateDatePrefix(): string {
@@ -57,18 +57,22 @@ export function useFile(dirPath: string) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [content, setContent] = useState('');
   const [title, setTitle] = useState<string | null>(null);
+  const [memos, setMemos] = useState<Memo[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
+  const memosRef = useRef<Memo[]>(memos);
   const metadataRef = useRef<FileMetadata | null>(null);
 
   contentRef.current = content;
+  memosRef.current = memos;
 
   const initFile = useCallback(async () => {
     const name = await getNextFileName(dirPath);
     setFileName(name);
     setContent('');
     setTitle(null);
+    setMemos([]);
     metadataRef.current = null;
   }, [dirPath]);
 
@@ -93,9 +97,10 @@ export function useFile(dirPath: string) {
           createdAt: now,
           updatedAt: now,
           title: null,
+          memos: memosRef.current,
         };
       } else {
-        metadataRef.current = { ...metadataRef.current, updatedAt: now };
+        metadataRef.current = { ...metadataRef.current, updatedAt: now, memos: memosRef.current };
       }
 
       const fileContent = buildFrontMatter(metadataRef.current) + currentContent;
@@ -151,6 +156,7 @@ export function useFile(dirPath: string) {
         setFileName(name);
         setContent(body);
         setTitle(metadata?.title ?? null);
+        setMemos(metadata?.memos ?? []);
         metadataRef.current = metadata;
       } catch (err) {
         console.error('Failed to open file:', err);
@@ -188,13 +194,30 @@ export function useFile(dirPath: string) {
     [saveFile]
   );
 
+  const updateMemos = useCallback(
+    (newMemos: Memo[]) => {
+      setMemos(newMemos);
+      memosRef.current = newMemos;
+      // メモ変更もオートセーブ対象
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(() => {
+        saveFile();
+      }, 1500);
+    },
+    [saveFile]
+  );
+
   return {
     fileName,
     content,
     title,
+    memos,
     isSaving,
     updateContent,
     updateTitle,
+    updateMemos,
     openFile,
     saveFile,
     initFile,

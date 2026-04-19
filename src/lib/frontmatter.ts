@@ -6,34 +6,45 @@
  * このモジュールはそのフロントマターを読み書きする共通処理。
  */
 
+import YAML from 'yaml';
+
+export interface Memo {
+  id: string;
+  side: 'left' | 'right';
+  /** ドキュメント内の相対位置（0〜1）。doc.content.size に対する比率 */
+  relativePos: number;
+  content: string;
+}
+
 export interface FileMetadata {
   uuid: string;
   createdAt: string;
   updatedAt: string;
   title: string | null;
+  memos: Memo[];
 }
 
 /**
  * メタデータから YAML フロントマター文字列を組み立てる。
- *
- * 出力例:
- * ```
- * ---
- * uuid: abc-123
- * created: 2025-03-30T14:23:10
- * updated: 2025-03-30T14:23:10
- * title: 今日の日記
- * ---
- *
- * ```
  */
 export function buildFrontMatter(meta: FileMetadata): string {
-  let fm = `---\nuuid: ${meta.uuid}\ncreated: ${meta.createdAt}\nupdated: ${meta.updatedAt}\n`;
+  const data: Record<string, unknown> = {
+    uuid: meta.uuid,
+    created: meta.createdAt,
+    updated: meta.updatedAt,
+  };
   if (meta.title) {
-    fm += `title: ${meta.title}\n`;
+    data.title = meta.title;
   }
-  fm += '---\n\n';
-  return fm;
+  if (meta.memos.length > 0) {
+    data.memos = meta.memos.map((m) => ({
+      id: m.id,
+      side: m.side,
+      relativePos: m.relativePos,
+      content: m.content,
+    }));
+  }
+  return `---\n${YAML.stringify(data)}---\n\n`;
 }
 
 /**
@@ -62,25 +73,42 @@ export function parseFrontMatter(fileContent: string): {
   if (end === -1) {
     return { metadata: null, body: fileContent };
   }
-  const fm = fileContent.slice(4, end);
+  const fmRaw = fileContent.slice(4, end);
   const rest = fileContent.slice(end + 5); // skip '\n---\n'
   const body = rest.startsWith('\n') ? rest.slice(1) : rest;
 
-  const uuidMatch = fm.match(/^uuid:\s*(.+)$/m);
-  const createdMatch = fm.match(/^created:\s*(.+)$/m);
-  const updatedMatch = fm.match(/^updated:\s*(.+)$/m);
-  const titleMatch = fm.match(/^title:\s*(.+)$/m);
-
-  if (!uuidMatch || !createdMatch || !updatedMatch) {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = YAML.parse(fmRaw);
+  } catch {
     return { metadata: null, body: fileContent };
+  }
+
+  if (!parsed || typeof parsed.uuid !== 'string' || !parsed.created || !parsed.updated) {
+    return { metadata: null, body: fileContent };
+  }
+
+  const memos: Memo[] = [];
+  if (Array.isArray(parsed.memos)) {
+    for (const m of parsed.memos) {
+      if (m && typeof m.id === 'string' && m.side && m.content != null) {
+        memos.push({
+          id: m.id,
+          side: m.side as 'left' | 'right',
+          relativePos: typeof m.relativePos === 'number' ? m.relativePos : 0,
+          content: String(m.content),
+        });
+      }
+    }
   }
 
   return {
     metadata: {
-      uuid: uuidMatch[1].trim(),
-      createdAt: createdMatch[1].trim(),
-      updatedAt: updatedMatch[1].trim(),
-      title: titleMatch ? titleMatch[1].trim() : null,
+      uuid: String(parsed.uuid),
+      createdAt: String(parsed.created),
+      updatedAt: String(parsed.updated),
+      title: typeof parsed.title === 'string' ? parsed.title : null,
+      memos,
     },
     body,
   };

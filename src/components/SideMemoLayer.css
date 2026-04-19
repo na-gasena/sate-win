@@ -1,0 +1,132 @@
+/* サイドメモ: 余白にダブルクリックで付箋を貼る */
+
+.side-memo-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* 左右の余白だけクリック可能にする */
+.side-memo-gutter {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: auto;
+  cursor: default;
+}
+
+.side-memo-gutter-left {
+  left: 0;
+  width: calc(50% - 33ch);
+}
+
+.side-memo-gutter-right {
+  right: 0;
+  width: calc(50% - 33ch);
+}
+
+/* ===== メモカード ===== */
+
+.memo-card {
+  position: absolute;
+  width: 160px;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+/* プラグインが el.style.opacity='1' で表示する（インラインスタイルが CSS に優先） */
+
+.memo-card--left {
+  /* editor-container の左端から 50%-33ch (ガター幅) の右端に配置 */
+  left: calc(50% - 33ch - 160px - 16px);
+}
+
+.memo-card--right {
+  left: calc(50% + 33ch + 16px);
+}
+
+.memo-card--focused .memo-card-textarea {
+  color: var(--text);
+}
+
+.memo-card-textarea {
+  width: 100%;
+  min-height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 6px 8px;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.memo-card-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+.memo-card-textarea:hover {
+  border-color: #3a3a38;
+}
+
+.memo-card-textarea:focus {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* ドラッグハンドル（上辺） */
+.memo-card-drag {
+  height: 6px;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.memo-card-drag:active {
+  cursor: grabbing;
+}
+
+.memo-card:hover .memo-card-drag,
+.memo-card--dragging .memo-card-drag {
+  opacity: 1;
+  background: linear-gradient(to bottom, var(--accent), transparent);
+  border-radius: 3px 3px 0 0;
+}
+
+/* 削除ボタン */
+.memo-card-delete {
+  position: absolute;
+  top: -6px;
+  right: -18px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--text-muted);
+  color: var(--bg);
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: auto;
+  padding: 0;
+}
+
+.memo-card:hover .memo-card-delete {
+  opacity: 0.6;
+}
+
+.memo-card-delete:hover {
+  opacity: 1 !important;
+}
