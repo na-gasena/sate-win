@@ -95,7 +95,8 @@
   cursor: grabbing;
 }
 
-.memo-card:hover .memo-card-drag {
+.memo-card:hover .memo-card-drag,
+.memo-card--dragging .memo-card-drag {
   opacity: 1;
   background: linear-gradient(to bottom, var(--accent), transparent);
   border-radius: 3px 3px 0 0;
@@ -104,8 +105,8 @@
 /* 削除ボタン */
 .memo-card-delete {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -6px;
+  right: -18px;
   width: 16px;
   height: 16px;
   border: none;

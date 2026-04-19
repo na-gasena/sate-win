@@ -7,6 +7,7 @@
  * 3. view.update + MutationObserver で coordsAtPos → style.top を直接設定
  */
 import { Plugin, PluginKey } from '@milkdown/prose/state';
+import type { EditorState } from '@milkdown/prose/state';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
 import type { Memo } from '../lib/frontmatter';
 
@@ -97,8 +98,14 @@ export function createMemoPlugin(
       function startObserver() {
         const container = containerRef.current;
         if (!container || observer) return;
-        observer = new MutationObserver(() => {
-          syncDOM(editorView);
+        // メモカードが追加されたタイミングだけを検知（エディタの編集には反応しない）
+        observer = new MutationObserver((mutations) => {
+          const hasNewMemo = mutations.some((m) =>
+            Array.from(m.addedNodes).some((n) =>
+              n instanceof HTMLElement && (n.hasAttribute('data-memo-id') || n.querySelector?.('[data-memo-id]')),
+            ),
+          );
+          if (hasNewMemo) syncDOM(editorView);
         });
         observer.observe(container, { childList: true, subtree: true });
       }
@@ -125,9 +132,8 @@ export function createMemoPlugin(
 }
 
 /** プラグインから位置マップを取得 */
-export function getPositions(viewState: { plugins: readonly Plugin[] }): Map<string, number> | undefined {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return memoPluginKey.getState(viewState as any) ?? undefined;
+export function getPositions(state: EditorState): Map<string, number> | undefined {
+  return memoPluginKey.getState(state) ?? undefined;
 }
 
 /** 位置マップから relativePos を同期。変更があれば新しい配列を返す */

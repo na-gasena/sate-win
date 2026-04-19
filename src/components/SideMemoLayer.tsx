@@ -4,6 +4,13 @@ import type { EditorView } from '@milkdown/prose/view';
 import { memoPluginKey } from './memoDecorationPlugin';
 import './SideMemoLayer.css';
 
+/** エディタ水平中央の Y 座標にあたる doc 内 pos を取得 */
+function posAtClientY(view: EditorView, clientY: number): number | null {
+  const editorRect = view.dom.getBoundingClientRect();
+  const x = editorRect.left + editorRect.width / 2;
+  return view.posAtCoords({ left: x, top: clientY })?.pos ?? null;
+}
+
 interface SideMemoLayerProps {
   memos: Memo[];
   onChange: (memos: Memo[]) => void;
@@ -16,12 +23,10 @@ export default function SideMemoLayer({ memos, onChange, editorViewRef }: SideMe
     (side: 'left' | 'right', e: React.MouseEvent) => {
       const view = editorViewRef.current;
       if (!view) return;
-      const editorRect = view.dom.getBoundingClientRect();
-      const x = editorRect.left + editorRect.width / 2;
-      const coords = view.posAtCoords({ left: x, top: e.clientY });
-      if (!coords) return;
+      const pos = posAtClientY(view, e.clientY);
+      if (pos == null) return;
       const size = view.state.doc.content.size;
-      const relativePos = size > 0 ? Math.max(0, Math.min(1, coords.pos / size)) : 0;
+      const relativePos = size > 0 ? Math.max(0, Math.min(1, pos / size)) : 0;
       onChange([...memos, { id: crypto.randomUUID().slice(0, 8), side, relativePos, content: '' }]);
     },
     [memos, onChange, editorViewRef],
@@ -99,7 +104,11 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
     const view = editorViewRef.current;
     if (!card || !view) return;
     const startY = e.clientY;
+    // マウスはカード上端からこの距離分下にある。ドロップ時にこの分を差し引いて
+    // カード上端の位置を基準に pos を解決することで見た目のズレを抑える。
+    const mouseOffsetFromCardTop = startY - card.getBoundingClientRect().top;
 
+    card.classList.add('memo-card--dragging');
     const onMove = (ev: MouseEvent) => {
       card.style.transform = `translateY(${ev.clientY - startY}px)`;
       card.style.opacity = '0.7';
@@ -109,13 +118,13 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
       document.removeEventListener('mouseup', onUp);
       card.style.transform = '';
       card.style.opacity = '';
+      card.classList.remove('memo-card--dragging');
 
-      // ドロップ位置の pos を取得してプラグインを直接更新
-      const editorRect = view.dom.getBoundingClientRect();
-      const x = editorRect.left + editorRect.width / 2;
-      const coords = view.posAtCoords({ left: x, top: ev.clientY });
-      if (coords) {
-        view.dispatch(view.state.tr.setMeta(memoPluginKey, { memoId: memo.id, pos: coords.pos }));
+      // カードの上端が来るべき Y 座標 = マウス位置 - ハンドルまでのオフセット
+      // posAtCoords は文字の行の上端にスナップする（行単位の離散化）
+      const pos = posAtClientY(view, ev.clientY - mouseOffsetFromCardTop);
+      if (pos != null) {
+        view.dispatch(view.state.tr.setMeta(memoPluginKey, { memoId: memo.id, pos }));
       }
     };
     document.addEventListener('mousemove', onMove);
