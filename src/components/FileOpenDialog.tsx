@@ -14,6 +14,7 @@ interface DisplayItem {
   name: string;
   preview: string | null;
   current_path: string | null;
+  private: boolean;
 }
 
 function renderSnippet(text: string) {
@@ -79,6 +80,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
           name: file.title || file.current_path?.replace(/\.md$/, '') || '無題',
           preview: r.snippet,
           current_path: file.current_path,
+          private: file.private === 1,
         });
       }
       setItems(displayItems);
@@ -90,11 +92,14 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
   }
 
   function fileRecordToItem(file: FileRecord): DisplayItem {
+    const isPrivate = file.private === 1;
     return {
       file_id: file.file_id,
       name: file.title || file.current_path?.replace(/\.md$/, '') || '無題',
-      preview: file.first_line,
+      // プライベート指定のファイルは一覧にプレビューを出さない
+      preview: isPrivate ? null : file.first_line,
       current_path: file.current_path,
+      private: isPrivate,
     };
   }
 
@@ -162,7 +167,10 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
                 onClick={() => { if (item.current_path) { onOpen(item.current_path); onClose(); } }}
                 onMouseEnter={() => setSelectedIndex(i)}
               >
-                <div className="fileopen-item-name">{item.name}</div>
+                <div className="fileopen-item-name">
+                  {item.private && <span className="fileopen-item-lock" aria-label="プライベート">🔒</span>}
+                  {item.name}
+                </div>
                 {item.preview && (
                   <div className="fileopen-item-preview">{renderSnippet(item.preview)}</div>
                 )}

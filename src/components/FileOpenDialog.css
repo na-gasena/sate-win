@@ -72,6 +72,14 @@
   color: var(--text);
 }
 
+.fileopen-item-lock {
+  display: inline-block;
+  font-size: 10px;
+  margin-right: 6px;
+  opacity: 0.6;
+  vertical-align: 1px;
+}
+
 .fileopen-match {
   text-decoration: underline;
   text-decoration-color: var(--text-muted);

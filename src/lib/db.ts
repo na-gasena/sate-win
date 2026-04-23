@@ -56,6 +56,12 @@ export async function initDatabase(vaultPath: string): Promise<Database> {
   // Core tables
   await db.execute(SCHEMA_SQL);
 
+  // 既存の files テーブルに private カラムが無ければ追加する軽量マイグレーション。
+  const cols = await db.select<{ name: string }[]>('PRAGMA table_info(files)');
+  if (!cols.some((c) => c.name === 'private')) {
+    await db.execute('ALTER TABLE files ADD COLUMN private INTEGER NOT NULL DEFAULT 0');
+  }
+
   // FTS5 — trigram トークナイザーで作成。
   // 既存テーブルがある場合はトークナイザーが違う可能性があるので再作成する。
   const ftsCheck = await db.select<{ sql: string }[]>(
@@ -88,6 +94,8 @@ export interface FileRecord {
   title: string | null;
   first_line: string | null;
   current_path: string | null;
+  /** 0 または 1（SQLite の INTEGER 真偽値） */
+  private: number;
 }
 
 export async function upsertFile(
@@ -97,17 +105,23 @@ export async function upsertFile(
   title: string | null,
   firstLine: string | null,
   currentPath: string | null,
+  isPrivate: boolean,
 ): Promise<void> {
   const d = getDatabase();
+  // プライベートなファイルは DB に本文の書き出しを残さない（万一DBが漏れても
+  // プレビューからは内容を推測できないようにする）。
+  const storedFirstLine = isPrivate ? null : firstLine;
+  const priv = isPrivate ? 1 : 0;
   await d.execute(
-    `INSERT INTO files (file_id, created_at, updated_at, title, first_line, current_path)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO files (file_id, created_at, updated_at, title, first_line, current_path, private)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      ON CONFLICT(file_id) DO UPDATE SET
        updated_at   = $3,
        title        = $4,
        first_line   = $5,
-       current_path = $6`,
-    [fileId, createdAt, updatedAt, title, firstLine, currentPath],
+       current_path = $6,
+       private      = $7`,
+    [fileId, createdAt, updatedAt, title, storedFirstLine, currentPath, priv],
   );
 }
 
@@ -188,11 +202,12 @@ export async function getLatestSnapshot(
 
 export async function updateSearchIndex(
   fileId: string,
-  content: string,
+  content: string | null,
 ): Promise<void> {
   const d = getDatabase();
   // FTS5 doesn't support UPSERT, so delete-then-insert
   await d.execute('DELETE FROM search_index WHERE file_id = $1', [fileId]);
+  if (content === null) return; // プライベートなら索引を残さない
   await d.execute(
     'INSERT INTO search_index (file_id, content) VALUES ($1, $2)',
     [fileId, content],
@@ -212,10 +227,13 @@ export async function searchFiles(query: string): Promise<SearchResult[]> {
   if (q.length < 3) {
     // 1〜2文字: trigram が効かないので LIKE で部分一致検索（全行スキャン）。
     // 個人のテキストファイル程度の件数なら十分高速。
+    // プライベートなファイルは索引自体に載っていないが、念のため JOIN で再除外する。
     return d.select<SearchResult[]>(
-      `SELECT file_id, substr(content, max(1, instr(content, $1) - 16), 64) AS snippet
-       FROM search_index
-       WHERE content LIKE '%' || $1 || '%'`,
+      `SELECT si.file_id, substr(si.content, max(1, instr(si.content, $1) - 16), 64) AS snippet
+       FROM search_index si
+       JOIN files f ON f.file_id = si.file_id
+       WHERE si.content LIKE '%' || $1 || '%'
+         AND f.private = 0`,
       [q],
     );
   }
@@ -223,9 +241,11 @@ export async function searchFiles(query: string): Promise<SearchResult[]> {
   // 3文字以上: FTS5 trigram でフレーズ検索
   const escaped = q.replace(/"/g, '""');
   return d.select<SearchResult[]>(
-    `SELECT file_id, snippet(search_index, 1, '【', '】', '…', 32) AS snippet
-     FROM search_index
+    `SELECT si.file_id, snippet(search_index, 1, '【', '】', '…', 32) AS snippet
+     FROM search_index si
+     JOIN files f ON f.file_id = si.file_id
      WHERE search_index MATCH $1
+       AND f.private = 0
      ORDER BY rank`,
     [`"${escaped}"`],
   );

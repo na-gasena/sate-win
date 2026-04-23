@@ -5,6 +5,7 @@ import WordCount from './components/WordCount';
 import ShortcutHelp from './components/ShortcutHelp';
 import SettingsDialog from './components/SettingsDialog';
 import FileOpenDialog from './components/FileOpenDialog';
+import FileHeader from './components/FileHeader';
 import SideMemoLayer from './components/SideMemoLayer';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
@@ -15,7 +16,7 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { fileName, content, title, memos, updateContent, updateTitle, updateMemos, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, title, memos, isPrivate, updateContent, updateTitle, updateMemos, updatePrivate, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -103,7 +104,13 @@ function App() {
           editorViewRef={editorViewRef}
         />
       </div>
-      {fileName && <div className="file-name">{fileName.replace(/\.md$/, '')}</div>}
+      {fileName && (
+        <FileHeader
+          fileName={fileName}
+          isPrivate={isPrivate}
+          onTogglePrivate={updatePrivate}
+        />
+      )}
       <WordCount count={charCount} />
       <ShortcutHelp visible={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SettingsDialog
