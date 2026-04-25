@@ -5,9 +5,10 @@ import {
   readDir,
   mkdir,
   exists,
+  remove,
 } from '@tauri-apps/plugin-fs';
 import { type FileMetadata, type Memo, buildFrontMatter, parseFrontMatter, extractFirstLine } from '../lib/frontmatter';
-import { upsertFile, updateSearchIndex, addSnapshot } from '../lib/db';
+import { upsertFile, updateSearchIndex, addSnapshot, deleteFile as deleteFileFromDb } from '../lib/db';
 
 function generateDatePrefix(): string {
   const now = new Date();
@@ -221,6 +222,36 @@ export function useFile(dirPath: string) {
     [saveFile]
   );
 
+  const deleteCurrentFile = useCallback(async () => {
+    if (!fileName) return;
+
+    // 進行中のオートセーブはキャンセルする（削除後に書き戻されるのを防ぐ）
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+
+    try {
+      const filePath = `${dirPath}/${fileName}`;
+      if (await exists(filePath)) {
+        await remove(filePath);
+      }
+      const fileId = metadataRef.current?.uuid;
+      if (fileId) {
+        try {
+          await deleteFileFromDb(fileId);
+        } catch {
+          // DB未初期化などは無視
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete file:', err);
+      return;
+    }
+
+    await initFile();
+  }, [fileName, dirPath, initFile]);
+
   const updatePrivate = useCallback(
     (next: boolean) => {
       setIsPrivate(next);
@@ -249,5 +280,6 @@ export function useFile(dirPath: string) {
     openFile,
     saveFile,
     initFile,
+    deleteCurrentFile,
   };
 }

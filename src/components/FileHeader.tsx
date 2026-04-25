@@ -1,10 +1,12 @@
 import { Lock } from 'lucide-react';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import './FileHeader.css';
 
 interface FileHeaderProps {
   fileName: string;
   isPrivate: boolean;
   onTogglePrivate: (next: boolean) => void;
+  onDelete: () => void;
 }
 
 /**
@@ -15,7 +17,17 @@ interface FileHeaderProps {
  *   ファイル名とメニューを別要素にすると隙間でホバーが切れるので、
  *   ひとつのカードを膨らませる構造にしている。
  */
-export default function FileHeader({ fileName, isPrivate, onTogglePrivate }: FileHeaderProps) {
+export default function FileHeader({ fileName, isPrivate, onTogglePrivate, onDelete }: FileHeaderProps) {
+  const handleDelete = async () => {
+    const ok = await confirm(`${fileName.replace(/\.md$/, '')} を削除しますか？`, {
+      title: 'ファイルを削除',
+      kind: 'warning',
+      okLabel: '削除',
+      cancelLabel: 'キャンセル',
+    });
+    if (ok) onDelete();
+  };
+
   return (
     <div className="file-header">
       <div className="file-header-card">
@@ -31,6 +43,13 @@ export default function FileHeader({ fileName, isPrivate, onTogglePrivate }: Fil
             onChange={(e) => onTogglePrivate(e.target.checked)}
           />
         </label>
+        <button
+          type="button"
+          className="file-header-card-row file-header-delete"
+          onClick={handleDelete}
+        >
+          <span className="file-header-menu-label">Delete</span>
+        </button>
       </div>
     </div>
   );

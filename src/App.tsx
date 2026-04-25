@@ -16,7 +16,7 @@ import './App.css';
 
 function App() {
   const { settings, loaded, updateSettings } = useSettings();
-  const { fileName, content, title, memos, isPrivate, updateContent, updateTitle, updateMemos, updatePrivate, saveFile, openFile, initFile } = useFile(settings?.baseDir ?? '');
+  const { fileName, content, title, memos, isPrivate, updateContent, updateTitle, updateMemos, updatePrivate, saveFile, openFile, initFile, deleteCurrentFile } = useFile(settings?.baseDir ?? '');
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -109,6 +109,7 @@ function App() {
           fileName={fileName}
           isPrivate={isPrivate}
           onTogglePrivate={updatePrivate}
+          onDelete={deleteCurrentFile}
         />
       )}
       <WordCount count={charCount} />
