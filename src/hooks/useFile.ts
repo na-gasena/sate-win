@@ -7,7 +7,13 @@ import {
   exists,
   remove,
 } from '@tauri-apps/plugin-fs';
-import { type FileMetadata, type Memo, buildFrontMatter, parseFrontMatter, extractFirstLine } from '../lib/frontmatter';
+import {
+  type FileMetadata,
+  type Memo,
+  buildFrontMatter,
+  parseFrontMatter,
+  extractFirstLine,
+} from '../lib/frontmatter';
 import { upsertFile, updateSearchIndex, addSnapshot, deleteFile as deleteFileFromDb } from '../lib/db';
 
 function generateDatePrefix(): string {
@@ -61,6 +67,9 @@ export function useFile(dirPath: string) {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [fileId, setFileId] = useState<string | null>(null);
+  // Editor を強制再マウントするためのキー（Rewind 復元時などに使う）
+  const [reloadKey, setReloadKey] = useState(0);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
   const memosRef = useRef<Memo[]>(memos);
@@ -78,6 +87,7 @@ export function useFile(dirPath: string) {
     setTitle(null);
     setMemos([]);
     setIsPrivate(false);
+    setFileId(null);
     metadataRef.current = null;
   }, [dirPath]);
 
@@ -105,6 +115,7 @@ export function useFile(dirPath: string) {
           memos: memosRef.current,
           private: privateRef.current,
         };
+        setFileId(metadataRef.current.uuid);
       } else {
         metadataRef.current = {
           ...metadataRef.current,
@@ -170,6 +181,7 @@ export function useFile(dirPath: string) {
         setTitle(metadata?.title ?? null);
         setMemos(metadata?.memos ?? []);
         setIsPrivate(metadata?.private ?? false);
+        setFileId(metadata?.uuid ?? null);
         metadataRef.current = metadata;
       } catch (err) {
         console.error('Failed to open file:', err);
@@ -266,13 +278,76 @@ export function useFile(dirPath: string) {
     [saveFile]
   );
 
+  /**
+   * スナップショット（フロントマター込みの全文）を現在のファイルに上書きする。
+   *
+   * 復元前の状態は呼び出し側で `saveFile(true)` 等で保存しておくこと。
+   * メタデータ（uuid 等）は保ったまま、updatedAt のみ「今」に更新する。
+   */
+  const restoreSnapshot = useCallback(
+    async (snapshotContent: string) => {
+      if (!fileName) return;
+      const { metadata, body } = parseFrontMatter(snapshotContent);
+      if (!metadata) return;
+
+      // 進行中のオートセーブを止める（古い content で上書きされないように）
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+
+      // 現在の uuid を保ったまま、updatedAt を「今」に。
+      const currentUuid = metadataRef.current?.uuid ?? metadata.uuid;
+      const restored: FileMetadata = {
+        ...metadata,
+        uuid: currentUuid,
+        updatedAt: new Date().toISOString(),
+      };
+
+      metadataRef.current = restored;
+      contentRef.current = body;
+      memosRef.current = restored.memos;
+      privateRef.current = restored.private;
+
+      setContent(body);
+      setTitle(restored.title);
+      setMemos(restored.memos);
+      setIsPrivate(restored.private);
+      setFileId(restored.uuid);
+      setReloadKey((k) => k + 1);
+
+      try {
+        await ensureDir(dirPath);
+        const fileContent = buildFrontMatter(restored) + body;
+        const filePath = `${dirPath}/${fileName}`;
+        await writeTextFile(filePath, fileContent);
+
+        try {
+          const createdAt = Math.floor(new Date(restored.createdAt).getTime() / 1000);
+          const updatedAt = Math.floor(new Date(restored.updatedAt).getTime() / 1000);
+          const firstLine = extractFirstLine(body);
+          await upsertFile(restored.uuid, createdAt, updatedAt, restored.title, firstLine, fileName, restored.private);
+          await updateSearchIndex(restored.uuid, restored.private ? null : body);
+          await addSnapshot(restored.uuid, fileContent);
+        } catch {
+          // DB 未初期化などは無視（ファイル本体は更新済み）
+        }
+      } catch (err) {
+        console.error('Failed to restore snapshot:', err);
+      }
+    },
+    [fileName, dirPath],
+  );
+
   return {
     fileName,
+    fileId,
     content,
     title,
     memos,
     isPrivate,
     isSaving,
+    reloadKey,
     updateContent,
     updateTitle,
     updateMemos,
@@ -281,5 +356,6 @@ export function useFile(dirPath: string) {
     saveFile,
     initFile,
     deleteCurrentFile,
+    restoreSnapshot,
   };
 }
