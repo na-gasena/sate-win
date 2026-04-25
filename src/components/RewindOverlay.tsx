@@ -87,7 +87,7 @@ export default function RewindOverlay({
           />
         </div>
         <div className="rewind-scrubber-hint">
-          Cmd+スクロールで移動 · Enter で復元 · Esc で戻る
+          Shift+Cmd+スクロールで移動 · Enter で復元 · Esc で戻る
         </div>
       </div>
     </div>

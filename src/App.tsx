@@ -154,8 +154,10 @@ function App() {
   // Cmd を押しながらのホイールで Rewind モードに入る/移動する
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
-      if (!e.metaKey) {
-        // Cmd を離したら累積をリセット（次回 Cmd+wheel 時にゼロから始める）
+      // Shift + Cmd の同時押しのみで反応させる。
+      // Cmd 単独だと、トラックパッドの慣性スクロール中に Cmd を押し下げた瞬間に
+      // 誤発動してしまうため。Shift も要求することで意図的な操作に絞る。
+      if (!e.metaKey || !e.shiftKey) {
         wheelAccumRef.current = 0;
         return;
       }
@@ -172,13 +174,13 @@ function App() {
       wheelAccumRef.current += e.deltaY;
       let steps = 0;
       while (wheelAccumRef.current >= SCROLL_STEP_THRESHOLD) {
-        // 下スクロール = 過去へ戻る
-        steps -= 1;
+        // 下スクロール = 未来へ進む
+        steps += 1;
         wheelAccumRef.current -= SCROLL_STEP_THRESHOLD;
       }
       while (wheelAccumRef.current <= -SCROLL_STEP_THRESHOLD) {
-        // 上スクロール = 未来へ進む
-        steps += 1;
+        // 上スクロール = 過去へ戻る
+        steps -= 1;
         wheelAccumRef.current += SCROLL_STEP_THRESHOLD;
       }
       if (steps !== 0) stepRewind(steps);
