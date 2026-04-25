@@ -96,7 +96,7 @@
 
 .fileopen-item-lock {
   display: inline-block;
-  margin-right: 6px;
+  margin-left: 6px;
   vertical-align: -1px;
   color: var(--text-muted);
 }

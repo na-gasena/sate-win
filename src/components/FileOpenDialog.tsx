@@ -170,8 +170,8 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
                 onMouseEnter={() => setSelectedIndex(i)}
               >
                 <div className="fileopen-item-name">
-                  {item.private && <Lock className="fileopen-item-lock" size={11} strokeWidth={1.75} aria-label="プライベート" />}
                   {item.name}
+                  {item.private && <Lock className="fileopen-item-lock" size={11} strokeWidth={1.75} aria-label="プライベート" />}
                 </div>
                 {item.preview && (
                   <div className="fileopen-item-preview">{renderSnippet(item.preview)}</div>
