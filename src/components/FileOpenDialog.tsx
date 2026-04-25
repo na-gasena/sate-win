@@ -34,6 +34,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
   const [query, setQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<FileSortOrder>('created');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isComposing, setIsComposing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
@@ -49,14 +50,17 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
   }, [visible, dirPath]);
 
   // クエリ・並び順が変わるたびに検索 or 全件取得
+  // IME変換中は確定前なので何もしない（変換確定の直前にIMEが空文字を発行すると
+  // 一覧に戻ってしまう挙動を防ぐ）
   useEffect(() => {
     if (!visible) return;
+    if (isComposing) return;
     if (query.trim()) {
       doSearch(query.trim());
     } else {
       loadAllFiles();
     }
-  }, [query, visible, sortOrder]);
+  }, [query, visible, sortOrder, isComposing]);
 
   async function loadAllFiles() {
     try {
@@ -151,8 +155,11 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
             placeholder="検索…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onCompositionStart={() => { composingRef.current = true; }}
-            onCompositionEnd={() => { setTimeout(() => { composingRef.current = false; }, 50); }}
+            onCompositionStart={() => { composingRef.current = true; setIsComposing(true); }}
+            onCompositionEnd={() => {
+              setIsComposing(false);
+              setTimeout(() => { composingRef.current = false; }, 50);
+            }}
           />
         </div>
         {items.length === 0 ? (
