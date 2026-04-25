@@ -1,7 +1,7 @@
 .file-header {
   position: fixed;
-  top: 20px;
-  right: 24px;
+  top: 12px;
+  right: 16px;
   z-index: 10;
   user-select: none;
   font-family: 'SF Mono', 'Menlo', monospace;
@@ -9,72 +9,86 @@
   color: var(--text-muted);
 }
 
-.file-header-label {
-  opacity: 0.5;
-  transition: opacity 150ms ease-out;
-  cursor: default;
-  text-align: right;
+/* ファイル名と属性トグルを内包する一枚のカード。
+   通常時は枠なし・背景なしでファイル名だけが浮いて見える。
+   ホバー時に枠＋背景が現れ、内側にトグル行が展開する。
+   別要素にしないのは、間に隙間ができてホバーが切れるのを避けるため。 */
+.file-header-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-width: 140px;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out;
 }
 
-.file-header:hover .file-header-label {
+.file-header:hover .file-header-card,
+.file-header:focus-within .file-header-card {
+  background: #2a2a28;
+  border-color: #3a3a38;
+}
+
+.file-header-card-name {
+  opacity: 0.5;
+  text-align: right;
+  letter-spacing: 0.02em;
+  transition: opacity 150ms ease-out;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.file-header:hover .file-header-card-name,
+.file-header:focus-within .file-header-card-name {
   opacity: 0.9;
 }
 
 .file-header-lock {
   display: inline-block;
   margin-right: 4px;
-  font-size: 10px;
+  vertical-align: -1px;
+  color: var(--text-muted);
 }
 
 .file-header-name {
   letter-spacing: 0.02em;
 }
 
-/* ふわっと下から出てくるメニュー */
-.file-header-menu {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 8px;
-  min-width: 140px;
-  background: #2a2a28;
-  border: 1px solid #3a3a38;
-  border-radius: 6px;
-  padding: 6px 0;
-  opacity: 0;
-  transform: translateY(-4px);
-  pointer-events: none;
-  transition: opacity 150ms ease-out, transform 150ms ease-out;
-}
-
-.file-header:hover .file-header-menu,
-.file-header:focus-within .file-header-menu {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.file-header-menu-row {
+/* トグル行はホバー時に展開する。max-height + opacity + margin-top で滑らかに。 */
+.file-header-card-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  cursor: pointer;
+  gap: 12px;
   font-family: 'YuGothic', 'Yu Gothic', sans-serif;
   font-size: 12px;
   color: var(--text);
-  gap: 10px;
+  cursor: pointer;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition:
+    max-height 150ms ease-out,
+    opacity 150ms ease-out,
+    margin-top 150ms ease-out;
 }
 
-.file-header-menu-row:hover {
-  background: #3a3a38;
+.file-header:hover .file-header-card-row,
+.file-header:focus-within .file-header-card-row {
+  max-height: 32px;
+  opacity: 1;
+  margin-top: 8px;
 }
 
 .file-header-menu-label {
   flex: 1;
+  text-align: left;
 }
 
-.file-header-menu-row input[type='checkbox'] {
+.file-header-card-row input[type='checkbox'] {
   accent-color: var(--text-muted);
   cursor: pointer;
   margin: 0;

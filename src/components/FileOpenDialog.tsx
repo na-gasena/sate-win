@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { Lock } from 'lucide-react';
 import { type FileRecord, getAllFiles, searchFiles, getFileById } from '../lib/db';
 import './FileOpenDialog.css';
 
@@ -168,7 +169,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
                 onMouseEnter={() => setSelectedIndex(i)}
               >
                 <div className="fileopen-item-name">
-                  {item.private && <span className="fileopen-item-lock" aria-label="プライベート">🔒</span>}
+                  {item.private && <Lock className="fileopen-item-lock" size={11} strokeWidth={1.75} aria-label="プライベート" />}
                   {item.name}
                 </div>
                 {item.preview && (

@@ -74,10 +74,9 @@
 
 .fileopen-item-lock {
   display: inline-block;
-  font-size: 10px;
   margin-right: 6px;
-  opacity: 0.6;
-  vertical-align: 1px;
+  vertical-align: -1px;
+  color: var(--text-muted);
 }
 
 .fileopen-match {
