@@ -13,7 +13,7 @@ import { useSettings } from './hooks/useSettings';
 import { initDatabase, getSnapshots, type SnapshotRecord } from './lib/db';
 import { reconcile } from './lib/reconcile';
 import { parseFrontMatter, type Memo } from './lib/frontmatter';
-import { diffLines, type DiffLine } from './lib/diff';
+import { diffLinesRich, cleanMarkdownForDisplay, type RichDiffLine } from './lib/diff';
 import './App.css';
 
 // 1ステップ進める/戻すために必要なホイール累積量。trackpad の小刻みなイベントを
@@ -82,7 +82,12 @@ function App() {
     const curr = snapshots[idx];
     const { body: currBody } = parseFrontMatter(curr.content);
     const prevBody = idx > 0 ? parseFrontMatter(snapshots[idx - 1].content).body : '';
-    const lines: DiffLine[] = diffLines(prevBody, currBody);
+    // 装飾記号（**、<br /> 等）を剥がしてから diff することで、
+    // プレビュー上で記号が可視化されないようにする。
+    const lines: RichDiffLine[] = diffLinesRich(
+      cleanMarkdownForDisplay(prevBody),
+      cleanMarkdownForDisplay(currBody),
+    );
     return { idx, lines };
   }, [rewindActive, rewindIndex, snapshots]);
 

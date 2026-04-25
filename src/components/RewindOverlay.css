@@ -41,38 +41,29 @@
   margin: 0;
   line-height: 2;
   white-space: pre-wrap;
-  transition: background-color 200ms ease, color 200ms ease, opacity 200ms ease;
-  border-radius: 2px;
-  padding: 0 4px;
-}
-
-.rewind-line--same {
   color: var(--text-muted);
 }
 
-.rewind-line--added {
+.rewind-seg {
+  transition: background-color 200ms ease, color 200ms ease;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.rewind-seg--same {
+  color: inherit;
+}
+
+.rewind-seg--added {
   color: var(--text);
-  background-color: rgba(138, 132, 120, 0.18);
-  box-shadow: 0 0 12px 2px rgba(212, 208, 200, 0.18);
+  background-color: rgba(138, 132, 120, 0.22);
+  box-shadow: 0 0 10px 1px rgba(212, 208, 200, 0.22);
   animation: rewind-glow-add 480ms ease-out;
 }
 
 @keyframes rewind-glow-add {
-  0%   { background-color: rgba(212, 208, 200, 0.5); box-shadow: 0 0 24px 4px rgba(212, 208, 200, 0.4); }
-  100% { background-color: rgba(138, 132, 120, 0.18); box-shadow: 0 0 12px 2px rgba(212, 208, 200, 0.18); }
-}
-
-.rewind-line--removed {
-  color: var(--text-muted);
-  text-decoration: line-through;
-  text-decoration-color: rgba(212, 208, 200, 0.4);
-  opacity: 0.45;
-  animation: rewind-glow-remove 480ms ease-out;
-}
-
-@keyframes rewind-glow-remove {
-  0%   { background-color: rgba(160, 80, 80, 0.25); opacity: 0.85; }
-  100% { background-color: transparent; opacity: 0.45; }
+  0%   { background-color: rgba(212, 208, 200, 0.55); box-shadow: 0 0 18px 3px rgba(212, 208, 200, 0.45); }
+  100% { background-color: rgba(138, 132, 120, 0.22); box-shadow: 0 0 10px 1px rgba(212, 208, 200, 0.22); }
 }
 
 /* スクラバー（下部） */

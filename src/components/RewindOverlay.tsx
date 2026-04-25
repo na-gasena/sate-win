@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import type { DiffLine } from '../lib/diff';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import type { RichDiffLine } from '../lib/diff';
 import './RewindOverlay.css';
 
 export interface RewindSnapshotMeta {
@@ -10,7 +10,7 @@ export interface RewindSnapshotMeta {
 interface RewindOverlayProps {
   snapshots: RewindSnapshotMeta[];
   currentIndex: number;
-  diffLines: DiffLine[];
+  diffLines: RichDiffLine[];
   onSelect: (index: number) => void;
 }
 
@@ -40,18 +40,57 @@ export default function RewindOverlay({
     return (safeIndex / (total - 1)) * 100;
   }, [safeIndex, total]);
 
+  // 「最後に変化があった行」のインデックス。スナップショット移動時にこの行を
+  // 画面中央に持ってくる。変化がなければスクロールを一番下へ。
+  const lastChangedIdx = useMemo(() => {
+    for (let i = diffLines.length - 1; i >= 0; i--) {
+      if (diffLines[i].segments.some((s) => s.tag === 'added')) return i;
+    }
+    return -1;
+  }, [diffLines]);
+
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const lastChangedRef = useRef<HTMLParagraphElement | null>(null);
+
+  useLayoutEffect(() => {
+    const preview = previewRef.current;
+    if (!preview) return;
+    if (lastChangedIdx >= 0 && lastChangedRef.current) {
+      const targetRect = lastChangedRef.current.getBoundingClientRect();
+      const previewRect = preview.getBoundingClientRect();
+      const offset =
+        targetRect.top - previewRect.top - preview.clientHeight / 2 + targetRect.height / 2;
+      preview.scrollTop += offset;
+    } else {
+      preview.scrollTop = preview.scrollHeight;
+    }
+  }, [lastChangedIdx, diffLines]);
+
   return (
     <div className="rewind-overlay">
-      <div className="rewind-preview">
+      <div className="rewind-preview" ref={previewRef}>
         <div className="rewind-preview-inner">
-          {diffLines.map((line, i) => (
-            <p
-              key={i}
-              className={`rewind-line rewind-line--${line.tag}`}
-            >
-              {line.text || ' '}
-            </p>
-          ))}
+          {diffLines.map((line, i) => {
+            // 削除セグメントは描画しない（インラインの削除も「黙って消える」）
+            const visible = line.segments.filter((s) => s.tag !== 'removed');
+            if (visible.length === 0) return null;
+            return (
+              <p
+                key={i}
+                className="rewind-line"
+                ref={i === lastChangedIdx ? lastChangedRef : null}
+              >
+                {visible.map((seg, j) => (
+                  <span
+                    key={j}
+                    className={`rewind-seg rewind-seg--${seg.tag}`}
+                  >
+                    {seg.text || ' '}
+                  </span>
+                ))}
+              </p>
+            );
+          })}
         </div>
       </div>
 
