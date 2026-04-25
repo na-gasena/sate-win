@@ -58,14 +58,17 @@ export function useFile(dirPath: string) {
   const [content, setContent] = useState('');
   const [title, setTitle] = useState<string | null>(null);
   const [memos, setMemos] = useState<Memo[]>([]);
+  const [isPrivate, setIsPrivate] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
   const memosRef = useRef<Memo[]>(memos);
+  const privateRef = useRef(isPrivate);
   const metadataRef = useRef<FileMetadata | null>(null);
 
   contentRef.current = content;
   memosRef.current = memos;
+  privateRef.current = isPrivate;
 
   const initFile = useCallback(async () => {
     const name = await getNextFileName(dirPath);
@@ -73,6 +76,7 @@ export function useFile(dirPath: string) {
     setContent('');
     setTitle(null);
     setMemos([]);
+    setIsPrivate(false);
     metadataRef.current = null;
   }, [dirPath]);
 
@@ -98,9 +102,15 @@ export function useFile(dirPath: string) {
           updatedAt: now,
           title: null,
           memos: memosRef.current,
+          private: privateRef.current,
         };
       } else {
-        metadataRef.current = { ...metadataRef.current, updatedAt: now, memos: memosRef.current };
+        metadataRef.current = {
+          ...metadataRef.current,
+          updatedAt: now,
+          memos: memosRef.current,
+          private: privateRef.current,
+        };
       }
 
       const fileContent = buildFrontMatter(metadataRef.current) + currentContent;
@@ -116,8 +126,9 @@ export function useFile(dirPath: string) {
         const updatedAt = Math.floor(new Date(meta.updatedAt).getTime() / 1000);
         const firstLine = extractFirstLine(currentContent);
 
-        await upsertFile(meta.uuid, createdAt, updatedAt, meta.title, firstLine, fileName);
-        await updateSearchIndex(meta.uuid, currentContent);
+        await upsertFile(meta.uuid, createdAt, updatedAt, meta.title, firstLine, fileName, meta.private);
+        // プライベートなファイルは全文索引を作らない（検索対象外にする）
+        await updateSearchIndex(meta.uuid, meta.private ? null : currentContent);
         await addSnapshot(meta.uuid, fileContent);
       } catch {
         // DB未初期化の場合はここに来る。ファイル保存自体は成功してるので問題なし
@@ -157,6 +168,7 @@ export function useFile(dirPath: string) {
         setContent(body);
         setTitle(metadata?.title ?? null);
         setMemos(metadata?.memos ?? []);
+        setIsPrivate(metadata?.private ?? false);
         metadataRef.current = metadata;
       } catch (err) {
         console.error('Failed to open file:', err);
@@ -209,15 +221,31 @@ export function useFile(dirPath: string) {
     [saveFile]
   );
 
+  const updatePrivate = useCallback(
+    (next: boolean) => {
+      setIsPrivate(next);
+      privateRef.current = next;
+      // プライベート状態の切り替えは即時反映したいので force 保存する。
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      saveFile(true);
+    },
+    [saveFile]
+  );
+
   return {
     fileName,
     content,
     title,
     memos,
+    isPrivate,
     isSaving,
     updateContent,
     updateTitle,
     updateMemos,
+    updatePrivate,
     openFile,
     saveFile,
     initFile,

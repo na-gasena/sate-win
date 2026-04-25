@@ -63,10 +63,11 @@ export async function reconcile(vaultPath: string): Promise<void> {
         metadata.title,
         firstLine,
         entry.name!,
+        metadata.private,
       );
 
-      // Step 5: 全文検索インデックスも更新
-      await updateSearchIndex(metadata.uuid, body);
+      // Step 5: 全文検索インデックスも更新（プライベートなら索引を残さない）
+      await updateSearchIndex(metadata.uuid, metadata.private ? null : body);
     } catch (err) {
       // 1ファイルの失敗で全体を止めない
       console.warn(`reconcile: skipped ${entry.name}:`, err);

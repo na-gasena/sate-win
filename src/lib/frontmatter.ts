@@ -22,6 +22,8 @@ export interface FileMetadata {
   updatedAt: string;
   title: string | null;
   memos: Memo[];
+  /** プライベート指定。true のとき検索対象外＆一覧で内容プレビュー非表示 */
+  private: boolean;
 }
 
 /**
@@ -35,6 +37,9 @@ export function buildFrontMatter(meta: FileMetadata): string {
   };
   if (meta.title) {
     data.title = meta.title;
+  }
+  if (meta.private) {
+    data.private = true;
   }
   if (meta.memos.length > 0) {
     data.memos = meta.memos.map((m) => ({
@@ -109,6 +114,7 @@ export function parseFrontMatter(fileContent: string): {
       updatedAt: String(parsed.updated),
       title: typeof parsed.title === 'string' ? parsed.title : null,
       memos,
+      private: parsed.private === true,
     },
     body,
   };
