@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock } from 'lucide-react';
-import { type FileRecord, getAllFiles, searchFiles, getFileById } from '../lib/db';
+import { type FileRecord, type FileSortOrder, getAllFiles, searchFiles, getFileById } from '../lib/db';
 import './FileOpenDialog.css';
 
 interface FileOpenDialogProps {
@@ -32,6 +32,7 @@ function renderSnippet(text: string) {
 export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: FileOpenDialogProps) {
   const [items, setItems] = useState<DisplayItem[]>([]);
   const [query, setQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<FileSortOrder>('created');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
@@ -47,7 +48,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
     loadAllFiles();
   }, [visible, dirPath]);
 
-  // クエリが変わるたびに検索 or 全件取得
+  // クエリ・並び順が変わるたびに検索 or 全件取得
   useEffect(() => {
     if (!visible) return;
     if (query.trim()) {
@@ -55,11 +56,11 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
     } else {
       loadAllFiles();
     }
-  }, [query, visible]);
+  }, [query, visible, sortOrder]);
 
   async function loadAllFiles() {
     try {
-      const records = await getAllFiles();
+      const records = await getAllFiles(sortOrder);
       setItems(records.map(fileRecordToItem));
       setSelectedIndex(0);
     } catch {
@@ -177,6 +178,17 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
                 )}
               </div>
             ))}
+          </div>
+        )}
+        {!query && (
+          <div className="fileopen-footer">
+            <button
+              type="button"
+              className="fileopen-sort-btn"
+              onClick={() => setSortOrder((o) => (o === 'created' ? 'updated' : 'created'))}
+            >
+              {sortOrder === 'created' ? 'Created at' : 'Updated at'}
+            </button>
           </div>
         )}
       </div>

@@ -125,9 +125,12 @@ export async function upsertFile(
   );
 }
 
-export async function getAllFiles(): Promise<FileRecord[]> {
+export type FileSortOrder = 'created' | 'updated';
+
+export async function getAllFiles(orderBy: FileSortOrder = 'created'): Promise<FileRecord[]> {
   const d = getDatabase();
-  return d.select<FileRecord[]>('SELECT * FROM files ORDER BY updated_at DESC');
+  const column = orderBy === 'created' ? 'created_at' : 'updated_at';
+  return d.select<FileRecord[]>(`SELECT * FROM files ORDER BY ${column} DESC`);
 }
 
 export async function getFileById(fileId: string): Promise<FileRecord | null> {

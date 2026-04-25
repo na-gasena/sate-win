@@ -44,6 +44,28 @@
   opacity: 0.6;
 }
 
+.fileopen-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 16px 0;
+  flex-shrink: 0;
+}
+
+.fileopen-sort-btn {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 10px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.fileopen-sort-btn:hover {
+  opacity: 1;
+}
+
 .fileopen-empty {
   font-family: 'YuGothic', 'Yu Gothic', sans-serif;
   font-size: 14px;
