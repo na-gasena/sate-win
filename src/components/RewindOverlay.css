@@ -1,0 +1,167 @@
+.rewind-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: rewind-fadein 160ms ease;
+}
+
+@keyframes rewind-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.rewind-preview {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.rewind-preview-inner {
+  width: 60ch;
+  padding: 48px 0 200px;
+  font-family: 'YuGothic', 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif;
+  font-size: 18px;
+  color: var(--text);
+  font-feature-settings: 'chws' 1, 'kern' 1;
+  font-kerning: normal;
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: break-word;
+  hyphens: none;
+  text-align: justify;
+  text-justify: inter-character;
+  hanging-punctuation: allow-end;
+}
+
+.rewind-line {
+  margin: 0;
+  line-height: 2;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+
+.rewind-seg {
+  transition: background-color 200ms ease, color 200ms ease;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.rewind-seg--same {
+  color: inherit;
+}
+
+.rewind-seg--added {
+  color: var(--text);
+  background-color: rgba(138, 132, 120, 0.22);
+  box-shadow: 0 0 10px 1px rgba(212, 208, 200, 0.22);
+  animation: rewind-glow-add 480ms ease-out;
+}
+
+@keyframes rewind-glow-add {
+  0%   { background-color: rgba(212, 208, 200, 0.55); box-shadow: 0 0 18px 3px rgba(212, 208, 200, 0.45); }
+  100% { background-color: rgba(138, 132, 120, 0.22); box-shadow: 0 0 10px 1px rgba(212, 208, 200, 0.22); }
+}
+
+/* スクラバー（下部） */
+.rewind-scrubber {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  width: min(720px, 80vw);
+  padding: 16px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  user-select: none;
+}
+
+.rewind-scrubber-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.rewind-scrubber-time {
+  color: var(--text);
+  opacity: 0.85;
+}
+
+.rewind-scrubber-track {
+  position: relative;
+  height: 28px;
+}
+
+.rewind-scrubber-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--text-muted);
+  opacity: 0.35;
+  transform: translateY(-50%);
+}
+
+.rewind-tick {
+  position: absolute;
+  top: 50%;
+  width: 1px;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+  background-color: var(--text-muted);
+  border: none;
+  border-radius: 0;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 120ms ease, height 120ms ease, background-color 120ms ease;
+}
+
+.rewind-tick::before {
+  content: '';
+  position: absolute;
+  inset: -8px -4px;
+}
+
+.rewind-tick:hover {
+  opacity: 1;
+  height: 16px;
+}
+
+.rewind-tick--active {
+  background-color: var(--text);
+  opacity: 1;
+  height: 18px;
+}
+
+.rewind-needle {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 22px;
+  background-color: var(--text);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  box-shadow: 0 0 8px rgba(212, 208, 200, 0.6);
+  pointer-events: none;
+  transition: left 140ms cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.rewind-scrubber-hint {
+  text-align: center;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+}

@@ -12,6 +12,15 @@ const sections = [
     ],
   },
   {
+    title: 'Rewind',
+    items: [
+      { keys: ['Shift', 'Cmd', 'Scroll'], description: 'スナップショットを遡る/進む' },
+      { keys: ['←', '→'], description: '一つ戻る/進む' },
+      { keys: ['Enter'], description: 'その時点に復元' },
+      { keys: ['Esc'], description: '現在に戻る' },
+    ],
+  },
+  {
     title: 'Text',
     items: [
       { keys: ['Cmd', 'B'], description: '太字' },
