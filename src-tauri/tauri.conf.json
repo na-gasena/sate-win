@@ -28,5 +28,9 @@
     "fs": {
       "requireLiteralLeadingDot": false
     }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app"]
   }
 }
