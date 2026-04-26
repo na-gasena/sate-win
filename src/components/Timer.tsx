@@ -22,32 +22,36 @@ export default function Timer() {
     end,
   } = useTimer();
 
-  const [isTyping, setIsTyping] = useState(false);
   const [mouseActive, setMouseActive] = useState(false);
   const [minuteFlash, setMinuteFlash] = useState(false);
   const prevRemainingRef = useRef<number | null>(null);
 
   useEffect(() => {
-    let typingTimer: number | undefined;
     let mouseTimer: number | undefined;
+    // タイマー非表示時の起点座標。ここから50px以上動いたら初めて表示する。
+    let anchor: { x: number; y: number } | null = null;
 
-    const onKeyDown = () => {
-      setIsTyping(true);
-      if (typingTimer !== undefined) window.clearTimeout(typingTimer);
-      typingTimer = window.setTimeout(() => setIsTyping(false), 1500);
-    };
-    const onMouseMove = () => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (anchor === null) {
+        anchor = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      const dx = e.clientX - anchor.x;
+      const dy = e.clientY - anchor.y;
+      if (dx * dx + dy * dy < 50 * 50) return;
+
       setMouseActive(true);
       if (mouseTimer !== undefined) window.clearTimeout(mouseTimer);
-      mouseTimer = window.setTimeout(() => setMouseActive(false), 2000);
+      mouseTimer = window.setTimeout(() => {
+        setMouseActive(false);
+        // 次回また50px動かないと出ないように起点をリセット
+        anchor = null;
+      }, 2000);
     };
 
-    window.addEventListener('keydown', onKeyDown);
     window.addEventListener('mousemove', onMouseMove);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('mousemove', onMouseMove);
-      if (typingTimer !== undefined) window.clearTimeout(typingTimer);
       if (mouseTimer !== undefined) window.clearTimeout(mouseTimer);
     };
   }, []);
@@ -60,14 +64,12 @@ export default function Timer() {
     if (remainingSeconds <= 0) return;
     if (prev % 60 !== 0 && remainingSeconds % 60 === 0) {
       setMinuteFlash(true);
-      const t = window.setTimeout(() => setMinuteFlash(false), 1500);
-      return () => window.clearTimeout(t);
+      window.setTimeout(() => setMinuteFlash(false), 1500);
     }
   }, [remainingSeconds]);
 
   const isRunning = mode === 'running' || mode === 'extending';
-  const showCountdown =
-    isRunning && (!isTyping || mouseActive || minuteFlash);
+  const showCountdown = isRunning && (mouseActive || minuteFlash);
 
   return (
     <>
@@ -163,8 +165,8 @@ export default function Timer() {
 function ClockIcon() {
   return (
     <svg
-      width="16"
-      height="16"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

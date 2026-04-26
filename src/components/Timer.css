@@ -1,7 +1,7 @@
 .timer-anchor {
   position: fixed;
-  top: 20px;
-  left: 24px;
+  top: 24px;
+  left: 32px;
   z-index: 50;
   user-select: none;
   font-family: 'SF Mono', 'Menlo', monospace;
@@ -87,8 +87,9 @@
 
 /* Countdown — hidden by default, fades in when visible */
 .timer-countdown {
-  font-family: 'SF Mono', 'Menlo', monospace;
-  font-size: 13px;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 32px;
+  font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 0.05em;
   opacity: 0;
