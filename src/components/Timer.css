@@ -1,0 +1,173 @@
+.timer-anchor {
+  position: fixed;
+  top: 20px;
+  left: 24px;
+  z-index: 50;
+  user-select: none;
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+/* Idle clock icon — subtle, hover brightens */
+.timer-clock-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  margin: -6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  opacity: 0.35;
+  transition: opacity 200ms ease, color 200ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.timer-clock-btn:hover {
+  opacity: 0.85;
+  color: var(--text);
+}
+.timer-clock-btn:focus-visible {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Setting popup */
+.timer-setting {
+  background: #2a2a28;
+  border: 1px solid #3a3a38;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 200px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  animation: timer-fade-in 150ms ease-out;
+}
+.timer-setting-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+}
+.timer-setting-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+.timer-preset-btn {
+  background: #3a3a38;
+  border: 1px solid #4a4a48;
+  color: var(--text);
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 12px;
+  padding: 6px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.timer-preset-btn:hover {
+  background: #4a4a48;
+  border-color: #5a5a58;
+}
+.timer-setting-cancel {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  padding: 2px 0;
+  cursor: pointer;
+  align-self: flex-end;
+}
+.timer-setting-cancel:hover {
+  color: var(--text);
+}
+
+/* Countdown — hidden by default, fades in when visible */
+.timer-countdown {
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  opacity: 0;
+  transition: opacity 600ms ease;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.timer-countdown.is-visible {
+  opacity: 0.7;
+  transition: opacity 250ms ease;
+}
+
+/* Modal */
+.timer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 200;
+  animation: timer-fade-in 180ms ease-out;
+}
+.timer-modal {
+  background: #2a2a28;
+  border: 1px solid #3a3a38;
+  border-radius: 12px;
+  padding: 28px 32px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.timer-modal-title {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 16px;
+  color: var(--text);
+  text-align: center;
+}
+.timer-modal-sub {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: -8px;
+}
+.timer-modal-extend {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.timer-modal-btn {
+  background: #3a3a38;
+  border: 1px solid #4a4a48;
+  color: var(--text);
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 12px;
+  padding: 8px 0;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.timer-modal-btn:hover {
+  background: #4a4a48;
+  border-color: #5a5a58;
+}
+.timer-modal-btn:focus-visible {
+  outline: 1px solid var(--text);
+  outline-offset: 1px;
+}
+.timer-modal-end {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  padding: 10px 0;
+  margin-top: 4px;
+}
+
+@keyframes timer-fade-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
