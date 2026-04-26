@@ -18,18 +18,24 @@ export interface UseTimerResult {
   end: () => void;
 }
 
-const SOUND_URL = '/se/BellTinyStrike.wav';
+const START_SOUND_URL = '/se/BellTimerStart.wav';
+const END_SOUND_URL = '/se/BellTimerEnd.wav';
 
 export function useTimer(): UseTimerResult {
   const [mode, setMode] = useState<TimerMode>('idle');
   const [endTime, setEndTime] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const startAudioRef = useRef<HTMLAudioElement | null>(null);
+  const endAudioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    const audio = new Audio(SOUND_URL);
-    audio.preload = 'auto';
-    audioRef.current = audio;
+    const startAudio = new Audio(START_SOUND_URL);
+    startAudio.preload = 'auto';
+    startAudioRef.current = startAudio;
+
+    const endAudio = new Audio(END_SOUND_URL);
+    endAudio.preload = 'auto';
+    endAudioRef.current = endAudio;
   }, []);
 
   useEffect(() => {
@@ -48,10 +54,10 @@ export function useTimer(): UseTimerResult {
   useEffect(() => {
     if (remainingSeconds !== 0) return;
     if (mode === 'running') {
-      audioRef.current?.play().catch(() => {});
+      endAudioRef.current?.play().catch(() => {});
       setMode('completed');
     } else if (mode === 'extending') {
-      audioRef.current?.play().catch(() => {});
+      endAudioRef.current?.play().catch(() => {});
       setMode('finished');
     }
   }, [remainingSeconds, mode]);
@@ -64,8 +70,17 @@ export function useTimer(): UseTimerResult {
     setMode((m) => (m === 'setting' ? 'idle' : m));
   }, []);
 
-  const primeAudio = useCallback(() => {
-    const audio = audioRef.current;
+  const playStartSound = useCallback(() => {
+    const audio = startAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  }, []);
+
+  const primeEndSound = useCallback(() => {
+    // ユーザー操作のコンテキストで終了音を一度ミュート再生してアンロックしておく。
+    // Safari の autoplay 制約で N 分後の play() が拒否されないようにするため。
+    const audio = endAudioRef.current;
     if (!audio) return;
     audio.muted = true;
     audio
@@ -82,19 +97,25 @@ export function useTimer(): UseTimerResult {
 
   const start = useCallback(
     (minutes: number) => {
-      primeAudio();
+      playStartSound();
+      primeEndSound();
       setEndTime(Date.now() + minutes * 60 * 1000);
       setRemainingSeconds(minutes * 60);
       setMode('running');
     },
-    [primeAudio]
+    [playStartSound, primeEndSound]
   );
 
-  const extend = useCallback((minutes: number) => {
-    setEndTime(Date.now() + minutes * 60 * 1000);
-    setRemainingSeconds(minutes * 60);
-    setMode('extending');
-  }, []);
+  const extend = useCallback(
+    (minutes: number) => {
+      playStartSound();
+      primeEndSound();
+      setEndTime(Date.now() + minutes * 60 * 1000);
+      setRemainingSeconds(minutes * 60);
+      setMode('extending');
+    },
+    [playStartSound, primeEndSound]
+  );
 
   const end = useCallback(() => {
     setEndTime(null);
