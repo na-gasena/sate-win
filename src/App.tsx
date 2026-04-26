@@ -14,6 +14,7 @@ import { initDatabase, getSnapshots, type SnapshotRecord } from './lib/db';
 import { reconcile } from './lib/reconcile';
 import { parseFrontMatter, type Memo } from './lib/frontmatter';
 import { diffLinesRich, cleanMarkdownForDisplay, type RichDiffLine } from './lib/diff';
+import { Selection } from '@milkdown/prose/state';
 import './App.css';
 
 // 1ステップ進める/戻すために必要なホイール累積量。trackpad の小刻みなイベントを
@@ -150,10 +151,18 @@ function App() {
     if (showShortcuts || showSettings) return;
     const target = e.target as HTMLElement;
     if (target.closest('.title-input')) return;
-    const el = document.querySelector('.ProseMirror') as HTMLElement | null;
-    if (el && document.activeElement !== el) {
-      el.focus();
-    }
+    // ProseMirror 内部のクリックは通常動作に任せる
+    if (target.closest('.ProseMirror')) return;
+    // 余白(padding 等)をクリックしたら、エディタより上なら先頭・下なら末尾にキャレット
+    const view = editorViewRef.current;
+    if (!view) return;
+    const rect = (view.dom as HTMLElement).getBoundingClientRect();
+    const atStart = e.clientY < rect.top;
+    const selection = atStart
+      ? Selection.atStart(view.state.doc)
+      : Selection.atEnd(view.state.doc);
+    view.dispatch(view.state.tr.setSelection(selection).scrollIntoView());
+    view.focus();
   }, [showShortcuts, showSettings, rewindActive]);
 
   // Cmd を押しながらのホイールで Rewind モードに入る/移動する
