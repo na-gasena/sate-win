@@ -577,6 +577,11 @@
   resolved "https://registry.npmjs.org/@floating-ui/utils/-/utils-0.2.11.tgz"
   integrity sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==
 
+"@fontsource/crimson-pro@^5.2.8":
+  version "5.2.8"
+  resolved "https://registry.yarnpkg.com/@fontsource/crimson-pro/-/crimson-pro-5.2.8.tgz#e0024ff2daca63eeacb2d56ef95744f55f0e7dd1"
+  integrity sha512-t+cAoAswUKEReDPqDNWWSyAp7baZkKrtF6Ry0KrDZQHJCldS9pIbRH0n2hm1u4+SbIUI7c+nUS9yfK6rEhycTw==
+
 "@humanfs/core@^0.19.1":
   version "0.19.1"
   resolved "https://registry.npmjs.org/@humanfs/core/-/core-0.19.1.tgz"
@@ -2226,6 +2231,11 @@ lru-cache@^5.1.1:
   integrity sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==
   dependencies:
     yallist "^3.0.2"
+
+lucide-react@^1.11.0:
+  version "1.11.0"
+  resolved "https://registry.yarnpkg.com/lucide-react/-/lucide-react-1.11.0.tgz#f8499142d785e1635d062daeae50bed6a8c307a8"
+  integrity sha512-UOhjdztXCgdBReRcIhsvz2siIBogfv/lhJEIViCpLt924dO+GDms9T7DNoucI23s6kEPpe988m5N0D2ajnzb2g==
 
 magic-string@^0.30.21:
   version "0.30.21"

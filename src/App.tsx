@@ -8,6 +8,7 @@ import FileOpenDialog from './components/FileOpenDialog';
 import FileHeader from './components/FileHeader';
 import SideMemoLayer from './components/SideMemoLayer';
 import RewindOverlay from './components/RewindOverlay';
+import Timer from './components/Timer';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import { initDatabase, getSnapshots, type SnapshotRecord } from './lib/db';
@@ -284,6 +285,7 @@ function App() {
         />
       )}
       {!rewindActive && <WordCount count={charCount} />}
+      {!rewindActive && <Timer />}
       <ShortcutHelp visible={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SettingsDialog
         visible={showSettings}
