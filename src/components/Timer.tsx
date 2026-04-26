@@ -46,7 +46,7 @@ export default function Timer() {
         setMouseActive(false);
         // 次回また50px動かないと出ないように起点をリセット
         anchor = null;
-      }, 2000);
+      }, 4000);
     };
 
     window.addEventListener('mousemove', onMouseMove);
@@ -64,7 +64,7 @@ export default function Timer() {
     if (remainingSeconds <= 0) return;
     if (prev % 60 !== 0 && remainingSeconds % 60 === 0) {
       setMinuteFlash(true);
-      window.setTimeout(() => setMinuteFlash(false), 1500);
+      window.setTimeout(() => setMinuteFlash(false), 3000);
     }
   }, [remainingSeconds]);
 

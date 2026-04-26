@@ -87,11 +87,10 @@
 
 /* Countdown — hidden by default, fades in when visible */
 .timer-countdown {
-  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
-  font-size: 32px;
-  font-weight: 600;
+  font-family: 'Crimson Pro', serif;
+  font-size: 36px;
+  font-weight: 300;
   color: var(--text-muted);
-  letter-spacing: 0.05em;
   opacity: 0;
   transition: opacity 600ms ease;
   pointer-events: none;

@@ -11,6 +11,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@fontsource/crimson-pro": "^5.2.8",
     "@milkdown/core": "^7.19.2",
     "@milkdown/ctx": "^7.19.2",
     "@milkdown/plugin-listener": "^7.19.2",
