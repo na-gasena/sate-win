@@ -257,7 +257,7 @@ function App() {
     <div className="app" onClick={handleClick}>
       <div className="editor-container" ref={editorContainerRef}>
         <div className="editor-wrapper">
-          <TitleInput key={`title-${fileName}-${reloadKey}`} value={title} onChange={updateTitle} />
+          <TitleInput key={`title-${fileName}-${reloadKey}`} value={title} onChange={updateTitle} editorViewRef={editorViewRef} />
           <EditorComponent
             key={`${fileName}-${reloadKey}`}
             initialContent={content}

@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react';
+import type { EditorView } from '@milkdown/prose/view';
 import './TitleInput.css';
 
 interface TitleInputProps {
   value: string | null;
   onChange: (title: string | null) => void;
+  editorViewRef: React.MutableRefObject<EditorView | null>;
 }
 
-export default function TitleInput({ value, onChange }: TitleInputProps) {
+export default function TitleInput({ value, onChange, editorViewRef }: TitleInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = useCallback(
@@ -30,33 +32,31 @@ export default function TitleInput({ value, onChange }: TitleInputProps) {
   }, []);
 
   // エディタから上矢印キーでタイトルにフォーカス
+  // capture phase で受けて、ProseMirror が処理する前に判定する。
+  // 「最初の textblock の最上段 visual line」かつ IME 変換中でない場合のみ移動。
   useEffect(() => {
     const handleEditorKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowUp') return;
+      if (e.isComposing || e.keyCode === 229) return;
 
-      const editor = document.querySelector('.ProseMirror');
-      if (!editor || document.activeElement !== editor) return;
+      const view = editorViewRef.current;
+      if (!view || view.isDestroyed) return;
+      if (!view.hasFocus()) return;
 
-      const sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0) return;
+      const { state } = view;
+      const { $head, empty } = state.selection;
+      if (!empty) return;
+      if ($head.before(1) !== 0) return;
+      if (!view.endOfTextblock('up')) return;
 
-      const range = sel.getRangeAt(0);
-      const firstChild = editor.firstChild;
-      if (!firstChild) return;
-
-      if (
-        range.startContainer === editor ||
-        range.startContainer === (firstChild as Node) ||
-        (range.startContainer.parentNode === (firstChild as Node) && range.startOffset === 0)
-      ) {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
+      e.preventDefault();
+      e.stopPropagation();
+      inputRef.current?.focus();
     };
 
-    document.addEventListener('keydown', handleEditorKeyDown);
-    return () => document.removeEventListener('keydown', handleEditorKeyDown);
-  }, []);
+    document.addEventListener('keydown', handleEditorKeyDown, true);
+    return () => document.removeEventListener('keydown', handleEditorKeyDown, true);
+  }, [editorViewRef]);
 
   return (
     <div className="title-input-area">
