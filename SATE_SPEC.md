@@ -57,9 +57,12 @@ sate/
 │   └── sounds/               # タイピング音（後回し）
 # ユーザーの保存先フォルダ（アプリ外）
 # {vault}/
-# ├── 2025-03-30-001.md       ← .mdファイル本体
-# └── .sate/
-#     └── sate.db             ← スナップショット・検索インデックス
+# └── 2025-03-30-001.md       ← .mdファイル本体（vault には .md だけを置く）
+#
+# アプリ専用ディレクトリ（OS の AppConfig）
+# macOS: ~/Library/Application Support/club.image.sate/
+# ├── settings.json           ← アプリ設定
+# └── sate.db                 ← スナップショット・検索インデックス
 ├── SATE_SPEC.md              # 本ファイル
 └── package.json
 ```
@@ -177,7 +180,9 @@ theme: dark            # dark | light
 #### 方針
 - ユーザーが意識することなく、裏で自動的にスナップショットを蓄積する
 - 上限なし。テキストは軽いので容量の心配は不要
-- `{vault}/.sate/sate.db`（SQLite）に保存
+- アプリ専用ディレクトリ配下の `sate.db`（SQLite）に保存
+  - macOS: `~/Library/Application Support/club.image.sate/sate.db`
+  - vault は `.md` のみで構成され、DB は同期対象外（iCloud / Obsidian と併用しても影響しない）
 
 #### DBスキーマ
 

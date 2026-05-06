@@ -1,5 +1,5 @@
 import Database from '@tauri-apps/plugin-sql';
-import { mkdir } from '@tauri-apps/plugin-fs';
+import { mkdir, exists, copyFile, remove, BaseDirectory } from '@tauri-apps/plugin-fs';
 
 // ---------------------------------------------------------------------------
 // DB singleton
@@ -42,16 +42,24 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 // ---------------------------------------------------------------------------
 
 /**
- * Open (or create) the SQLite database at `{vaultPath}/.sate/sate.db`
- * and run migrations. Returns the Database instance.
+ * Open (or create) the SQLite database at the OS app-config directory
+ * (macOS: `~/Library/Application Support/club.image.sate/sate.db`) and run
+ * migrations. Returns the Database instance.
+ *
+ * vault フォルダの外に DB を置くことで、iCloud 同期や Obsidian と併用しても
+ * バイナリの DB ファイルが同期対象に入らないようにしている。
+ *
+ * 旧バージョン（< 0.x）は `{vaultPath}/.sate/sate.db` に保存していたので、
+ * 旧 DB が残っていれば一度だけ AppConfig に複製してから旧ディレクトリを削除する。
  */
 export async function initDatabase(vaultPath: string): Promise<Database> {
   if (db) return db;
 
-  const sateDir = `${vaultPath}/.sate`;
-  await mkdir(sateDir, { recursive: true });
+  await migrateLegacyDatabase(vaultPath);
 
-  db = await Database.load(`sqlite:${sateDir}/sate.db`);
+  // tauri-plugin-sql の "sqlite:<filename>" は OS の AppConfig（macOS では
+  // ~/Library/Application Support/{identifier}/）直下にファイルを作る。
+  db = await Database.load('sqlite:sate.db');
 
   // Core tables
   await db.execute(SCHEMA_SQL);
@@ -81,6 +89,45 @@ export async function initDatabase(vaultPath: string): Promise<Database> {
 export function getDatabase(): Database {
   if (!db) throw new Error('Database not initialised. Call initDatabase first.');
   return db;
+}
+
+/**
+ * 旧配置（vault/.sate/sate.db）から新配置（AppConfig/sate.db）への一回限りの移行。
+ * - AppConfig 側に sate.db が既にあれば何もしない（既に移行済みまたは新規環境）
+ * - 旧 DB が無ければ何もしない（クリーンインストール）
+ * - 旧 DB の本体に加えて、未チェックポイントの WAL/SHM があれば一緒に複製する
+ *   （未保存のスナップショットを失わないため）
+ * - 複製後に旧 .sate ディレクトリを削除して、iCloud 同期対象から外す
+ */
+async function migrateLegacyDatabase(vaultPath: string): Promise<void> {
+  const newAlreadyExists = await exists('sate.db', { baseDir: BaseDirectory.AppConfig });
+  if (newAlreadyExists) return;
+
+  const legacyDir = `${vaultPath}/.sate`;
+  const legacyDb = `${legacyDir}/sate.db`;
+  const legacyExists = await exists(legacyDb);
+  if (!legacyExists) return;
+
+  // AppConfig ディレクトリを作る（無いと copyFile が失敗する）
+  const appConfigDirExists = await exists('', { baseDir: BaseDirectory.AppConfig });
+  if (!appConfigDirExists) {
+    await mkdir('', { baseDir: BaseDirectory.AppConfig, recursive: true });
+  }
+
+  for (const name of ['sate.db', 'sate.db-wal', 'sate.db-shm']) {
+    const src = `${legacyDir}/${name}`;
+    if (await exists(src)) {
+      await copyFile(src, name, { toPathBaseDir: BaseDirectory.AppConfig });
+    }
+  }
+
+  try {
+    await remove(legacyDir, { recursive: true });
+  } catch (err) {
+    // 削除に失敗しても新 DB へのコピーは成功しているので、ユーザー操作は続行可能。
+    // 残った .sate ディレクトリは手動で消してもらう。
+    console.warn('Failed to remove legacy .sate directory:', err);
+  }
 }
 
 // ---------------------------------------------------------------------------

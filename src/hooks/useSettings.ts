@@ -8,7 +8,7 @@ import {
 } from '@tauri-apps/plugin-fs';
 import { homeDir, join } from '@tauri-apps/api/path';
 
-// Settings are stored in ~/Library/Application Support/com.sate.app/ (macOS)
+// Settings are stored in ~/Library/Application Support/club.image.sate/ (macOS)
 // Tauri's AppConfig BaseDirectory maps to the OS-standard config location.
 const CONFIG_FILE = 'settings.json';
 

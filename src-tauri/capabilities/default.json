@@ -16,6 +16,7 @@
     "fs:allow-write-text-file",
     "fs:allow-rename",
     "fs:allow-remove",
+    "fs:allow-copy-file",
     "fs:scope-home",
     "fs:scope-home-recursive",
     "fs:scope-appconfig",

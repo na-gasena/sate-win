@@ -1,8 +1,8 @@
 {
-  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
+  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Sate",
   "version": "0.1.0",
-  "identifier": "com.sate.app",
+  "identifier": "club.image.sate",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",

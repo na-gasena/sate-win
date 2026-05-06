@@ -147,5 +147,5 @@ BaseDirectory.Temp
 
 ## 設定ファイル
 
-- アプリ設定: `BaseDirectory.AppConfig` (`~/Library/Application Support/com.sate.app/settings.json`)
+- アプリ設定: `BaseDirectory.AppConfig` (`~/Library/Application Support/club.image.sate/settings.json`)
 - ユーザーファイル: 設定で指定されたディレクトリ（デフォルト `~/Documents/Sate/`）
