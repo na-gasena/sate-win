@@ -49,6 +49,23 @@ const clipboardTextSerializerPlugin = $prose(() => {
   });
 });
 
+// カーソルがウインドウ下端に張り付かないように、下端から2行分の余白を
+// 保ってスクロールさせる。scrollIntoView はデフォルトだと「カーソルが
+// 見える」最小限しかスクロールしないため、書き続けると常に最下端を
+// 見つめることになる。
+// 2行分 = font-size 18px × line-height 2 × 2行 = 72px
+const SCROLL_BOTTOM_MARGIN = 72;
+const scrollBottomMarginPlugin = $prose(() => {
+  return new Plugin({
+    key: new PluginKey('scroll-bottom-margin'),
+    props: {
+      // カーソルが下端から threshold 以内に入ったら、margin の位置まで持ち上げる
+      scrollThreshold: { top: 0, right: 0, bottom: SCROLL_BOTTOM_MARGIN, left: 0 },
+      scrollMargin: { top: 0, right: 0, bottom: SCROLL_BOTTOM_MARGIN, left: 0 },
+    },
+  });
+});
+
 // テキスト選択のハイライトをカスタムデコレーションで描画
 const selectionHighlightPlugin = $prose(() => {
   return new Plugin({
@@ -90,6 +107,7 @@ function MilkdownEditor({ onChange, initialContent = '', memosRef, editorViewRef
       .use(history)
       .use(listener)
       .use(shiftEnterAsSplitPlugin)
+      .use(scrollBottomMarginPlugin)
       .use(selectionHighlightPlugin)
       .use(clipboardTextSerializerPlugin)
       .use(memoPlugin)
