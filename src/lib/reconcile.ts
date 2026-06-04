@@ -11,7 +11,7 @@
  *       (作成日時はファイルシステムの birthtime、更新日時は mtime を採用)
  *     - これにより Obsidian など外部エディタで作られたファイルも追跡対象に入る
  *  3. DB の files テーブルと突き合わせて INSERT or UPDATE
- *  4. ファイルが消えていたら DB からも DELETE
+ *  4. ファイルが消えていたら DB からも DELETE（スナップショット履歴は残す）
  *  5. 全文検索インデックス（search_index）も更新
  *
  * これがあると:
@@ -30,7 +30,7 @@ import {
 import {
   getAllFiles,
   upsertFile,
-  deleteFile,
+  detachFile,
   updateSearchIndex,
   addSnapshot,
 } from './db';
@@ -180,11 +180,15 @@ export async function reconcile(vaultPath: string): Promise<void> {
 
   // -----------------------------------------------------------------------
   // Step 4: DB にあるけどファイルが消えてるレコードを削除
+  //
+  // スナップショット履歴は意図的に消さない（detachFile）。
+  // ファイルの消失が「保存バグによる上書き」や「同期の途中状態」だった場合、
+  // 履歴が残っていれば本文を復元できる。履歴ごと消すと復元手段が絶たれる。
   // -----------------------------------------------------------------------
   const dbFiles = await getAllFiles();
   for (const record of dbFiles) {
     if (!foundIds.has(record.file_id)) {
-      await deleteFile(record.file_id);
+      await detachFile(record.file_id);
     }
   }
 }

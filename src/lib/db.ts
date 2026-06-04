@@ -196,6 +196,20 @@ export async function deleteFile(fileId: string): Promise<void> {
   await d.execute('DELETE FROM files WHERE file_id = $1', [fileId]);
 }
 
+/**
+ * ファイルのレコードと検索インデックスだけを消し、スナップショット履歴は残す。
+ *
+ * reconcile 等の「自動」削除はこちらを使うこと。スナップショットは
+ * データ消失時の最後の防衛線なので、ユーザーが明示的に削除した場合
+ * （deleteFile）以外では消さない。同じ uuid のファイルが復活したら
+ * （iCloud 同期や復元など）、残した履歴がそのまま再び紐づく。
+ */
+export async function detachFile(fileId: string): Promise<void> {
+  const d = getDatabase();
+  await d.execute('DELETE FROM search_index WHERE file_id = $1', [fileId]);
+  await d.execute('DELETE FROM files WHERE file_id = $1', [fileId]);
+}
+
 // ---------------------------------------------------------------------------
 // snapshots table
 // ---------------------------------------------------------------------------

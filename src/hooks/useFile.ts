@@ -71,11 +71,18 @@ export function useFile(dirPath: string) {
   // Editor を強制再マウントするためのキー（Rewind 復元時などに使う）
   const [reloadKey, setReloadKey] = useState(0);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // fileName もref で持つ。オートセーブは setTimeout 経由で遅れて発火するため、
+  // クロージャに古い fileName が残ったまま contentRef だけ新しい、という
+  // 不整合な状態で保存される事故（開いたファイルの内容が元のファイルの
+  // パスへ書き込まれてデータが消える）を防ぐ。保存時は常に ref から
+  // 「いま」の fileName を読むことで、パスと内容の整合性を保証する。
+  const fileNameRef = useRef<string | null>(fileName);
   const contentRef = useRef(content);
   const memosRef = useRef<Memo[]>(memos);
   const privateRef = useRef(isPrivate);
   const metadataRef = useRef<FileMetadata | null>(null);
 
+  fileNameRef.current = fileName;
   contentRef.current = content;
   memosRef.current = memos;
   privateRef.current = isPrivate;
@@ -83,7 +90,9 @@ export function useFile(dirPath: string) {
   const initFile = useCallback(async () => {
     const name = await getNextFileName(dirPath);
     setFileName(name);
+    fileNameRef.current = name;
     setContent('');
+    contentRef.current = '';
     setTitle(null);
     setMemos([]);
     setIsPrivate(false);
@@ -92,6 +101,8 @@ export function useFile(dirPath: string) {
   }, [dirPath]);
 
   const saveFile = useCallback(async (force = false) => {
+    // クロージャではなく ref から読む（コメント参照: fileNameRef）
+    const fileName = fileNameRef.current;
     if (!fileName) return;
     const currentContent = contentRef.current;
     if (!currentContent && !force) return;
@@ -150,7 +161,7 @@ export function useFile(dirPath: string) {
     } finally {
       setIsSaving(false);
     }
-  }, [fileName, dirPath]);
+  }, [dirPath]);
 
   const updateContent = useCallback(
     (newContent: string) => {
@@ -172,22 +183,33 @@ export function useFile(dirPath: string) {
 
   const openFile = useCallback(
     async (name: string) => {
+      // 保留中のオートセーブがあれば、切り替える前に「今のファイル」へ確定させる。
+      // これをせずに内容を差し替えると、後からタイマーが発火したときに
+      // 開いたファイルの内容が元のファイルへ書き込まれてしまう。
+      // （直近 1.5 秒以内の編集が保存されないまま消える問題の防止も兼ねる）
+      if (saveTimerRef.current) {
+        await saveFile();
+      }
       try {
         const filePath = `${dirPath}/${name}`;
         const text = await readTextFile(filePath);
         const { metadata, body } = parseFrontMatter(text);
         setFileName(name);
+        fileNameRef.current = name;
         setContent(body);
+        contentRef.current = body;
         setTitle(metadata?.title ?? null);
         setMemos(metadata?.memos ?? []);
+        memosRef.current = metadata?.memos ?? [];
         setIsPrivate(metadata?.private ?? false);
+        privateRef.current = metadata?.private ?? false;
         setFileId(metadata?.uuid ?? null);
         metadataRef.current = metadata;
       } catch (err) {
         console.error('Failed to open file:', err);
       }
     },
-    [dirPath]
+    [dirPath, saveFile]
   );
 
   useEffect(() => {
