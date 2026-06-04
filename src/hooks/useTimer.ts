@@ -25,17 +25,49 @@ export function useTimer(): UseTimerResult {
   const [mode, setMode] = useState<TimerMode>('idle');
   const [endTime, setEndTime] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
-  const startAudioRef = useRef<HTMLAudioElement | null>(null);
-  const endAudioRef = useRef<HTMLAudioElement | null>(null);
+  // 効果音は <audio> 要素ではなく Web Audio API で鳴らす。
+  // HTMLAudioElement だと WKWebView が macOS の Now Playing（メディアキー）に
+  // アプリを登録してしまい、再生後にイヤホン等の再生ボタンを押すと
+  // 効果音がもう一度鳴ってしまうため。Web Audio の出力はメディアキーに反応しない。
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const startBufferRef = useRef<AudioBuffer | null>(null);
+  const endBufferRef = useRef<AudioBuffer | null>(null);
 
   useEffect(() => {
-    const startAudio = new Audio(START_SOUND_URL);
-    startAudio.preload = 'auto';
-    startAudioRef.current = startAudio;
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
 
-    const endAudio = new Audio(END_SOUND_URL);
-    endAudio.preload = 'auto';
-    endAudioRef.current = endAudio;
+    const load = async (url: string) => {
+      const res = await fetch(url);
+      const data = await res.arrayBuffer();
+      return ctx.decodeAudioData(data);
+    };
+    load(START_SOUND_URL)
+      .then((buf) => { startBufferRef.current = buf; })
+      .catch(() => {});
+    load(END_SOUND_URL)
+      .then((buf) => { endBufferRef.current = buf; })
+      .catch(() => {});
+
+    return () => {
+      audioCtxRef.current = null;
+      ctx.close().catch(() => {});
+    };
+  }, []);
+
+  const playBuffer = useCallback((buffer: AudioBuffer | null) => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || !buffer) return;
+    // autoplay 制約で suspended のままの場合に備えて resume しておく。
+    // タイマー開始はユーザー操作なので、ここで一度 running になれば
+    // N 分後の終了音もそのまま鳴らせる。
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start();
   }, []);
 
   useEffect(() => {
@@ -54,13 +86,13 @@ export function useTimer(): UseTimerResult {
   useEffect(() => {
     if (remainingSeconds !== 0) return;
     if (mode === 'running') {
-      endAudioRef.current?.play().catch(() => {});
+      playBuffer(endBufferRef.current);
       setMode('completed');
     } else if (mode === 'extending') {
-      endAudioRef.current?.play().catch(() => {});
+      playBuffer(endBufferRef.current);
       setMode('finished');
     }
-  }, [remainingSeconds, mode]);
+  }, [remainingSeconds, mode, playBuffer]);
 
   const openSetting = useCallback(() => {
     setMode((m) => (m === 'idle' ? 'setting' : m));
@@ -71,50 +103,29 @@ export function useTimer(): UseTimerResult {
   }, []);
 
   const playStartSound = useCallback(() => {
-    const audio = startAudioRef.current;
-    if (!audio) return;
-    audio.currentTime = 0;
-    audio.play().catch(() => {});
-  }, []);
-
-  const primeEndSound = useCallback(() => {
-    // ユーザー操作のコンテキストで終了音を一度ミュート再生してアンロックしておく。
-    // Safari の autoplay 制約で N 分後の play() が拒否されないようにするため。
-    const audio = endAudioRef.current;
-    if (!audio) return;
-    audio.muted = true;
-    audio
-      .play()
-      .then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.muted = false;
-      })
-      .catch(() => {
-        audio.muted = false;
-      });
-  }, []);
+    // ユーザー操作のコンテキストで AudioContext が resume されるので、
+    // 終了音のための事前アンロック（旧 primeEndSound）は不要になった。
+    playBuffer(startBufferRef.current);
+  }, [playBuffer]);
 
   const start = useCallback(
     (minutes: number) => {
       playStartSound();
-      primeEndSound();
       setEndTime(Date.now() + minutes * 60 * 1000);
       setRemainingSeconds(minutes * 60);
       setMode('running');
     },
-    [playStartSound, primeEndSound]
+    [playStartSound]
   );
 
   const extend = useCallback(
     (minutes: number) => {
       playStartSound();
-      primeEndSound();
       setEndTime(Date.now() + minutes * 60 * 1000);
       setRemainingSeconds(minutes * 60);
       setMode('extending');
     },
-    [playStartSound, primeEndSound]
+    [playStartSound]
   );
 
   const end = useCallback(() => {
