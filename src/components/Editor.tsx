@@ -103,12 +103,18 @@ function MilkdownEditor({ onChange, initialContent = '', memosRef, editorViewRef
 
   // EditorView の参照を親に公開
   const [loading, getInstance] = useInstance();
+  const didInitialFocusRef = useRef(false);
   useEffect(() => {
     if (loading) return;
     const editor = getInstance();
     if (!editor) return;
     try {
-      editorViewRef.current = editor.ctx.get(editorViewCtx);
+      const view = editor.ctx.get(editorViewCtx);
+      editorViewRef.current = view;
+      if (!didInitialFocusRef.current && view && !view.isDestroyed) {
+        didInitialFocusRef.current = true;
+        view.focus();
+      }
     } catch { /* not ready */ }
   }, [loading, getInstance, editorViewRef]);
 
