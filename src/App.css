@@ -160,6 +160,56 @@
   margin: 1.5em 0;
 }
 
+/* リスト: マーカーを自前で描画し、本文の頭と揃える */
+.editor-wrapper .ProseMirror ul,
+.editor-wrapper .ProseMirror ol {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.editor-wrapper .ProseMirror li {
+  position: relative;
+  padding-left: 1.4em;
+  line-height: 2;
+}
+
+.editor-wrapper .ProseMirror ul > li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--text);
+  line-height: 2;
+}
+
+.editor-wrapper .ProseMirror ol {
+  counter-reset: sate-ol;
+}
+
+.editor-wrapper .ProseMirror ol > li {
+  counter-increment: sate-ol;
+}
+
+.editor-wrapper .ProseMirror ol > li::before {
+  content: counter(sate-ol) ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--text);
+  line-height: 2;
+}
+
+.editor-wrapper .ProseMirror li > p {
+  margin: 0;
+}
+
+/* 入れ子のリストはさらにインデント */
+.editor-wrapper .ProseMirror li > ul,
+.editor-wrapper .ProseMirror li > ol {
+  padding-left: 1.5em;
+}
+
 /* Word count */
 .word-count {
   position: fixed;
