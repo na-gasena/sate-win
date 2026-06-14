@@ -31,7 +31,7 @@ Sateは「書くこと」だけに特化したmacOS向けネイティブアプ�
 
 ---
 
-## ディレクトリ構成（想定）
+## ディレクトリ構成（現状）
 
 ```
 sate/
@@ -41,20 +41,30 @@ sate/
 │   └── tauri.conf.json
 ├── src/                # Reactフロントエンド
 │   ├── components/
-│   │   ├── Editor.tsx        # Milkdownエディタ本体
-│   │   ├── FileOverlay.tsx   # ファイル一覧・検索オーバーレイ
-│   │   └── WordCount.tsx     # 文字数カウンター
+│   │   ├── Editor.tsx               # Milkdownエディタ本体
+│   │   ├── FileHeader.tsx           # タイトル入力・Privateチェック
+│   │   ├── FileOpenDialog.tsx       # ファイル一覧・検索オーバーレイ
+│   │   ├── RewindOverlay.tsx        # タイムマシン（Rewind）UI
+│   │   ├── SettingsDialog.tsx       # 環境設定
+│   │   ├── ShortcutHelp.tsx         # ショートカット一覧
+│   │   ├── SideMemoLayer.tsx        # サイドメモのレイヤー
+│   │   ├── memoDecorationPlugin.ts  # サイドメモ位置追跡（ProseMirrorプラグイン）
+│   │   ├── Timer.tsx                # タイマーUI
+│   │   ├── TitleInput.tsx           # タイトル入力欄
+│   │   └── WordCount.tsx            # 文字数カウンター
 │   ├── hooks/
-│   │   ├── useFile.ts        # ファイル保存・読み込み
-│   │   └── useKeyboard.ts    # ショートカット管理
+│   │   ├── useFile.ts               # ファイル保存・読み込み・スナップショット
+│   │   ├── useSettings.ts           # 設定の読み書き
+│   │   └── useTimer.ts              # タイマー・効果音
 │   ├── lib/
-│   │   ├── search.ts         # 全文検索
-│   │   ├── snapshot.ts       # スナップショット管理
-│   │   └── db.ts             # SQLiteアクセス層
+│   │   ├── db.ts                    # SQLiteアクセス層・全文検索・スナップショット
+│   │   ├── diff.ts                  # Rewind用の行差分
+│   │   ├── frontmatter.ts           # フロントマターのパース/ビルド
+│   │   └── reconcile.ts             # ファイルシステム ↔ DB 同期
 │   ├── App.tsx
 │   └── main.tsx
 ├── public/
-│   └── sounds/               # タイピング音（後回し）
+│   └── se/                          # 効果音（タイマー）
 # ユーザーの保存先フォルダ（アプリ外）
 # {vault}/
 # └── 2025-03-30-001.md       ← .mdファイル本体（vault には .md だけを置く）
@@ -109,8 +119,11 @@ word-break: keep-all;
 - フォントは小さく、薄く
 
 #### 自動保存
-- タイピングが止まってから1〜2秒後に自動保存
-- 保存の通知・インジケーターは出さない（あるいは極めて控えめに）
+- タイピングが止まってから **1.5秒後** に自動保存（`useFile.ts` の `updateContent` 内 `setTimeout`）
+- 保存時に同じタイミングでスナップショットも記録する（後述）
+- 保存の通知・インジケーターは出さない
+- ファイル切り替え（開く / 新規）時には、保留中の自動保存を切り替え前に確定させる
+  （タイマー発火で開いたファイルへ前の内容が書き込まれる事故を防ぐため）
 
 ---
 
@@ -135,30 +148,38 @@ word-break: keep-all;
 ### 3. フロントマター
 
 ファイルの同一性管理と将来の拡張のため、フロントマターを使用する。**Milkdown上では非表示**にする。
+実装は `src/lib/frontmatter.ts`（`parseFrontMatter` / `buildFrontMatter`）。YAML パースには `yaml` パッケージを使用。
 
 ```yaml
 ---
-id: 550e8400-e29b-41d4-a716-446655440000   # UUID（不変）
-created: 2025-03-30T14:23:10
-title: 今日の日記      # 任意。なければNULL、ファイル名で代替
-font: yu-gothic        # yu-gothic | yu-mincho
-theme: dark            # dark | light
-# 将来的に追加予定
-# color-scheme: warm
-# line-height: 2.0
+uuid: 550e8400-e29b-41d4-a716-446655440000   # UUID（不変）
+created: 2025-03-30T14:23:10                  # ISO8601
+updated: 2025-03-30T15:01:22                  # ISO8601。保存のたびに更新
+title: 今日の日記                              # 任意。なければ出力しない（ファイル名で代替）
+private: true                                 # 任意。プライベート指定（後述）。false のときは出力しない
+memos:                                        # 任意。サイドメモ（後述）。空のときは出力しない
+  - id: a1b2c3d4
+    side: left                                # left | right
+    relativePos: 0.35                         # ドキュメント内の相対位置（0〜1）
+    content: メモ内容
 ---
 ```
 
+> **未実装フィールド**: `font`（游ゴシック/游明朝）、`theme`（dark/light）は現時点では未実装。
+> 現状テーマはダーク固定、フォントは游ゴシック固定で、これらをフロントマターに書き出す処理は無い。
+
 #### ファイル同一性の解決ロジック
 
-ファイルを開く際、フロントマターの`id`（UUID）で照合する。
+ファイルを開く際、フロントマターの`uuid`で照合する。
 
 ```
-1. frontmatterのidで探す → 見つかればOK
-2. 見つからない          → 新規ファイルとして扱う
+1. frontmatterのuuidで探す → 見つかればOK
+2. 見つからない             → 新規ファイルとして扱う
 ```
 
 リネーム・移動・iCloud同期のいずれの場合もUUIDは不変なので、すべてのケースをカバーできる。
+フロントマターが無い `.md`（Obsidian 等で作られたファイル）は、起動時の Reconcile（後述）で自動的に
+UUID と作成/更新日時（ファイルシステムの birthtime / mtime）を注入する。
 
 ---
 
@@ -186,14 +207,17 @@ theme: dark            # dark | light
 
 #### DBスキーマ
 
+実装は `src/lib/db.ts`（`tauri-plugin-sql`）。
+
 ```sql
 CREATE TABLE files (
   file_id TEXT PRIMARY KEY,  -- フロントマターのUUIDそのまま
   created_at INTEGER,
   updated_at INTEGER,
   title TEXT,                -- フロントマターのtitle（NULLも可）
-  first_line TEXT,           -- 本文の書き出し行（一覧表示用キャッシュ）
-  current_path TEXT          -- ファイルの現在のパス
+  first_line TEXT,           -- 本文の書き出し行（一覧表示用キャッシュ。privateならNULL）
+  current_path TEXT,         -- ファイルの現在のパス
+  private INTEGER NOT NULL DEFAULT 0  -- プライベート指定（後発の軽量マイグレーションで追加）
 );
 
 CREATE TABLE snapshots (
@@ -204,11 +228,27 @@ CREATE TABLE snapshots (
   FOREIGN KEY (file_id) REFERENCES files(file_id)
 );
 
+-- trigram トークナイザーで日本語の部分一致検索に対応
 CREATE VIRTUAL TABLE search_index USING fts5(
   file_id,
-  content                    -- 全文検索インデックス
+  content,                   -- 全文検索インデックス（privateファイルは登録しない）
+  tokenize='trigram'
 );
 ```
+
+#### DBの配置とマイグレーション
+- DB は `~/Library/Application Support/club.image.sate/sate.db`（OS の AppConfig 直下）に置く。
+  vault の外なので iCloud / Obsidian の同期対象に入らない。
+- 旧バージョンは `{vault}/.sate/sate.db` に置いていたため、旧 DB があれば一度だけ
+  AppConfig に複製（WAL/SHM 込み）して旧ディレクトリを削除する（`migrateLegacyDatabase`）。
+- `files.private` カラムは存在しなければ `ALTER TABLE` で追加する軽量マイグレーションあり。
+- FTS テーブルが古いトークナイザーで作られていれば作り直す。
+
+#### Reconcile（ファイルシステム ↔ DB 同期）
+- 起動時に vault フォルダをスキャンし、DB と突き合わせる（`src/lib/reconcile.ts`）。
+- フロントマターの無い `.md` には UUID と作成/更新日時を注入（Obsidian 等で作られたファイルを追跡）。
+- DB にあって実ファイルが消えているレコードは `detachFile` で一覧から外す（スナップショット履歴は残す）。
+- これにより「`.md` が唯一の真実」を担保し、DB はいつでも再生成できる。
 
 ファイル一覧の表示：
 ```
@@ -222,25 +262,34 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 ```
 
 #### スナップショットのタイミング
-- タイピングが止まってから30秒後に自動保存（通常の自動保存と同タイミング）
-- ファイルを閉じる時に必ず1回保存
-- 同一内容の場合はスキップ
+- 通常の自動保存（タイピング停止 1.5秒後）と同じタイミングで記録
+- ファイルを閉じる / 切り替える時にも保存される
+- 直前のスナップショットと同一内容の場合はスキップ（`addSnapshot` 内で重複チェック）
+- スナップショットの `content` にはフロントマター込みの全文を保存する
 
 #### タイムマシンUI（Rewind方式）
 
-`Cmd+Shift+H` でタイムラインモードに入る。
+実装は `src/App.tsx`（状態管理・キーバインド）と `src/components/RewindOverlay.tsx`（UI）。
+**`Shift+Cmd+スクロール`** で起動し、そのまま遡る/進む。
 
 ```
 通常モード
-  ↓ Cmd+Shift+H
+  ↓ Shift+Cmd+スクロール（最初の操作で起動）
 タイムラインモード（画面下部にスクラバー出現）
-  ↓ Cmd+スクロールアップ
-過去のスナップショットに遡る（テキストがリアルタイムに変化）
+  ↓ Shift+Cmd+スクロール（上=過去 / 下=未来） または ← / →
+過去のスナップショットを遡る/進む（テキストがリアルタイムに変化、前との差分を色分け表示）
   ↓ Enter
 その時点に復元（復元前の状態もスナップショットとして保存）
   ↓ Esc
 現在に戻る（何もしない）
 ```
+
+- `Cmd` 単独ではなく `Shift+Cmd` を要求する。トラックパッドの慣性スクロール中に Cmd を
+  押し下げた瞬間の誤発動を避けるため。
+- スクロール量 50px（`SCROLL_STEP_THRESHOLD`）ごとに 1 スナップショット移動。
+- Rewind 中は通常のキー入力を横取りし、編集が混入しないようにする。
+- ファイルが切り替わったら（新規含め）Rewind は強制終了。
+- 直前のスナップショットとの差分（追加/削除された行）を色分けし、変化のあった行を画面中央へ自動スクロール。
 
 スクラバーのイメージ：
 ```
@@ -248,33 +297,32 @@ CREATE VIRTUAL TABLE search_index USING fts5(
        ↑ スクロールで移動
 ```
 
-**JS実装の核心：**
-```javascript
-window.addEventListener('wheel', (e) => {
-  if (e.metaKey) {
-    e.preventDefault()
-    scrubTimeline(e.deltaY)  // 50px = 1スナップショット移動
-  }
-}, { passive: false })
-```
-
 ---
 
 ### 5. ファイルオーバーレイ
 
+実装は `src/components/FileOpenDialog.tsx`。
+
 #### 呼び出し
-- `Cmd+O` または `Cmd+K` で表示
+- `Cmd+O` で表示（トグル）
 - `Esc` で閉じる
+- ※ 仕様当初は `Cmd+K` も予定していたが、現状は `Cmd+O` のみ
 
 #### 表示
 - 画面中央にSpotlightライクなオーバーレイが出現
 - 背景の文章はそのまま残り、オーバーレイだけが前面に出る（ペインではなくモーダル）
 - ファイル一覧：新しい順にファイル名（日付+連番）が並ぶ
+- ↑↓ で選択、Enter で開く
+- フッターのボタンで並び順を Created At / Updated At で切り替え可能
+- プライベートファイル（後述）は鍵アイコン付きで表示され、本文プレビューは出さない
 
 #### 検索
 - オーバーレイを開いた瞬間からキーボードフォーカスが検索欄に当たる
 - 打ち始めたらファイル名検索 + 全文検索が同時に走る
 - マッチした箇所のスニペットをファイル名の下に薄く表示
+- IME変換中（未確定）は検索を実行しない
+- 全文検索は SQLite FTS5 の **trigram トークナイザー** を使用。3文字以上は FTS、
+  1〜2文字は LIKE による部分一致でフォールバック（`src/lib/db.ts` の `searchFiles`）
 
 ```
 ┌────────────────────────────────────┐
@@ -328,6 +376,80 @@ window.addEventListener('wheel', (e) => {
 
 ---
 
+### 10. タイマー
+
+集中して書くための簡易タイマー。実装は `src/hooks/useTimer.ts`（ロジック・効果音）と
+`src/components/Timer.tsx`（UI）。
+
+- 右下のクロックアイコンをクリックして設定パネルを開く
+- プリセット：5 / 10 / 15 / 20 / 25 分
+- 実行中は、マウスを 50px 以上動かしたときだけ右下にカウントダウンを表示（4秒で自動的に消える）
+- 分が切り替わる瞬間（例 14:59 → 14:00）にフラッシュ表示
+- 終了時にモーダル「タイマー終了」を表示し、続ける（+1〜+5分）/ セッション終了 を選べる
+- 効果音：開始音 `public/se/BellTimerStart.wav`、終了音 `public/se/BellTimerEnd.wav`
+  - **Web Audio API** で再生する。`<audio>` 要素だと macOS の Now Playing（メディアキー）に
+    紐づいてしまい、再生後にメディアキーで鳴ってしまう問題があったため
+
+---
+
+### 11. プライベートファイル
+
+人に見せたくない内容を検索・一覧から隠す指定。実装は `src/components/FileHeader.tsx`（チェックボックス）、
+`src/hooks/useFile.ts`（`updatePrivate`）、`src/lib/db.ts`（除外ロジック）。
+
+- ファイルヘッダー右上の "Private" チェックボックスで切り替え
+- フロントマターに `private: true` として保存
+- ON のとき：
+  - 全文検索インデックス（`search_index`）に登録しない → 検索でヒットしない
+  - 一覧の本文プレビュー（`first_line`）を NULL にする → ファイルオーバーレイで内容が見えない
+  - ファイルオーバーレイでは鍵アイコン付きで表示される
+
+---
+
+## キーボードショートカット
+
+実装済みのショートカット（`src/App.tsx`、ヘルプは `Cmd+/`）。
+
+| キー | 動作 |
+|---|---|
+| `Cmd+S` | 保存 |
+| `Cmd+N` | 新規ファイル（現在の内容を保存してから新規作成） |
+| `Cmd+O` | ファイルオーバーレイを開く/閉じる |
+| `Cmd+/` | ショートカット一覧 |
+| `Cmd+,` | 環境設定 |
+| `Shift+Cmd+スクロール` | タイムマシン（Rewind）起動・移動 |
+| `← / →`（Rewind中） | スナップショットを 1 つ戻る/進む |
+| `Enter`（Rewind中） | その時点に復元 |
+| `Esc` | モーダルを閉じる / Rewind を終了 |
+
+このほか、Milkdown(ProseMirror) 標準の `Cmd+B` / `Cmd+I` / `Cmd+Z` などの編集ショートカットが使える。
+
+---
+
+## 設定
+
+実装は `src/hooks/useSettings.ts`。設定は `~/Library/Application Support/club.image.sate/settings.json`
+に保存される。現状の設定項目は保存先ディレクトリのみ。
+
+```jsonc
+{
+  "baseDir": "/Users/foo/Documents/Sate"  // ユーザーファイル（.md）の保存先
+}
+```
+
+> フォント（游ゴシック/游明朝）やテーマ（dark/light）の切り替えは未実装のため、設定項目には無い。
+
+---
+
+## 起動時の挙動（実装）
+
+- 設定をロード → DB を初期化（必要なら旧 DB を移行）→ Reconcile で vault をスキャン
+- 常に新規ファイルを開いた状態で起動
+- 起動後はエディタ本文へ自動フォーカスする
+- 入力カーソルの下端には常に 2 行分の余白を保ってスクロールする
+
+---
+
 ## スタイルガイド
 
 ### カラーパレット（ダークテーマ）
@@ -364,21 +486,28 @@ window.addEventListener('wheel', (e) => {
 
 ### Phase 2（体験を整える）
 - [x] 文字数カウンター
-- [ ] ファイルオーバーレイ（一覧表示）
-- [ ] 全文検索（SQLite FTS）
-- [ ] スナップショット自動保存
-- [ ] タイムマシンUI（Cmd+Shift+H + Cmd+スクロール）
-- [ ] ダーク / ライトテーマ切り替え
+- [x] ファイルオーバーレイ（一覧表示）
+- [x] 全文検索（SQLite FTS5 / trigram）
+- [x] スナップショット自動保存
+- [x] タイムマシンUI（Shift+Cmd+スクロール）
+- [ ] ダーク / ライトテーマ切り替え（現状ダーク固定）
 - [ ] 日本語組版CSS
 
 ### Phase 3（細部の作り込み）
 - [ ] 通知抑制
 - [ ] タイピング音
-- [ ] 游ゴシック / 游明朝 切り替え
+- [ ] 游ゴシック / 游明朝 切り替え（現状ゴシック固定）
 
 ### Phase 4（将来）
 - [ ] ジェネレーティブアンビエント音楽
 - [ ] 書くモード / 推敲モードの分離
+
+### 仕様策定後に追加された機能
+- [x] サイドメモ（[docs/side-memo.md](docs/side-memo.md)）
+- [x] スナップショットからの復元
+- [x] タイマー（効果音付き）
+- [x] プライベートファイル指定
+- [x] Reconcile（ファイルシステム ↔ DB 同期）／旧DBのマイグレーション
 
 ---
 
