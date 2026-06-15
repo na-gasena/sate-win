@@ -14,6 +14,7 @@ const CONFIG_FILE = 'settings.json';
 
 export interface Settings {
   baseDir: string; // Absolute path, e.g. "/Users/foo/Documents/Sate"
+  publishDir?: string; // text-site リポジトリのルート。未設定なら公開機能は無効。
 }
 
 export function useSettings() {
@@ -33,7 +34,7 @@ export function useSettings() {
           });
           const parsed = JSON.parse(text) as Partial<Settings>;
           if (parsed.baseDir) {
-            setSettings({ baseDir: parsed.baseDir });
+            setSettings({ baseDir: parsed.baseDir, publishDir: parsed.publishDir });
           }
         }
 

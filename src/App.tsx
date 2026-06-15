@@ -11,6 +11,7 @@ import RewindOverlay from './components/RewindOverlay';
 import Timer from './components/Timer';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
+import { usePublish } from './hooks/usePublish';
 import { initDatabase, getSnapshots, type SnapshotRecord } from './lib/db';
 import { reconcile } from './lib/reconcile';
 import { parseFrontMatter, type Memo } from './lib/frontmatter';
@@ -42,6 +43,7 @@ function App() {
     deleteCurrentFile,
     restoreSnapshot,
   } = useFile(settings?.baseDir ?? '');
+  const publish = usePublish(settings?.publishDir, fileName, title, content);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -282,6 +284,12 @@ function App() {
           isPrivate={isPrivate}
           onTogglePrivate={updatePrivate}
           onDelete={deleteCurrentFile}
+          publishConfigured={publish.configured}
+          publishStatus={publish.status}
+          publishBusy={publish.busy}
+          publishError={publish.error}
+          onPublish={publish.publish}
+          onRetract={publish.retract}
         />
       )}
       {!rewindActive && <WordCount count={charCount} />}

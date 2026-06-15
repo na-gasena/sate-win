@@ -108,3 +108,72 @@ button.file-header-card-row {
 .file-header-delete .file-header-menu-label {
   color: #d97870;
 }
+
+/* 公開ブロック。他の行と同様、ホバー時にだけ展開する。 */
+.file-header-publish {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin-top: 0;
+  transition:
+    max-height 150ms ease-out,
+    opacity 150ms ease-out,
+    margin-top 150ms ease-out;
+}
+
+.file-header:hover .file-header-publish,
+.file-header:focus-within .file-header-publish {
+  max-height: 120px;
+  opacity: 1;
+  margin-top: 8px;
+}
+
+.file-header-publish-status {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.file-header-publish-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.file-header-publish-btn {
+  flex: 1;
+  background: transparent;
+  border: 1px solid #3a3a38;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.file-header-publish-btn:hover:not(:disabled) {
+  background: #3a3a38;
+}
+
+.file-header-publish-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.file-header-publish-retract {
+  color: #d97870;
+}
+
+.file-header-publish-error {
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 11px;
+  color: #d97870;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
