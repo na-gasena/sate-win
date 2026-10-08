@@ -43,6 +43,7 @@ sate/
 │   ├── components/
 │   │   ├── Editor.tsx               # Milkdownエディタ本体
 │   │   ├── FileHeader.tsx           # タイトル入力・Privateチェック
+│   │   ├── controlCharFilterPlugin.ts # 制御文字の混入防止（ProseMirrorプラグイン）
 │   │   ├── FileOpenDialog.tsx       # ファイル一覧・検索オーバーレイ
 │   │   ├── RewindOverlay.tsx        # タイムマシン（Rewind）UI
 │   │   ├── SettingsDialog.tsx       # 環境設定
@@ -104,6 +105,8 @@ sate/
   - 中央揃え、大きな文字なども対応
 - プレビュー分離なし。書いているものがそのまま出力
 - IME未確定文字列の扱いを適切に処理すること
+- 制御文字（タブ・改行以外）は入力・貼り付け時に取り除く（`src/components/controlCharFilterPlugin.ts`）
+  - WebKit では割り当ての無い `Ctrl+Cmd+文字キー` の制御文字（例: `Ctrl+Cmd+P` → U+0010）が本文に入ってしまうため
 
 #### 日本語組版
 ```css
