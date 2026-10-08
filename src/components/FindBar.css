@@ -1,0 +1,65 @@
+.find-bar {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #2a2a28;
+  border: 1px solid #3a3a38;
+  border-radius: 8px;
+  padding: 4px 6px 4px 12px;
+  cursor: default;
+  animation: fade-in 150ms ease-out;
+}
+
+.find-bar-input {
+  width: 220px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  padding: 2px 0;
+}
+
+.find-bar-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.find-bar-count {
+  min-width: 48px;
+  text-align: right;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.find-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.find-bar-btn:hover:not(:disabled) {
+  background: #3a3a38;
+  color: var(--text);
+}
+
+.find-bar-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}

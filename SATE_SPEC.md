@@ -45,11 +45,13 @@ sate/
 │   │   ├── FileHeader.tsx           # タイトル入力・Privateチェック
 │   │   ├── controlCharFilterPlugin.ts # 制御文字の混入防止（ProseMirrorプラグイン）
 │   │   ├── FileOpenDialog.tsx       # ファイル一覧・検索オーバーレイ
+│   │   ├── FindBar.tsx              # 文書内検索バー（Cmd+F）
 │   │   ├── RewindOverlay.tsx        # タイムマシン（Rewind）UI
 │   │   ├── SettingsDialog.tsx       # 環境設定
 │   │   ├── ShortcutHelp.tsx         # ショートカット一覧
 │   │   ├── SideMemoLayer.tsx        # サイドメモのレイヤー
 │   │   ├── memoDecorationPlugin.ts  # サイドメモ位置追跡（ProseMirrorプラグイン）
+│   │   ├── searchPlugin.ts          # 文書内検索のヒット管理・ハイライト（ProseMirrorプラグイン）
 │   │   ├── Timer.tsx                # タイマーUI
 │   │   ├── TitleInput.tsx           # タイトル入力欄
 │   │   └── WordCount.tsx            # 文字数カウンター
@@ -409,6 +411,26 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 
 ---
 
+### 12. 文書内検索
+
+開いている文書の本文から語句を探す機能。ファイルをまたぐ検索はファイルオーバーレイ（`Cmd+O`）が担う。
+実装は `src/components/searchPlugin.ts`（ヒット管理・ハイライト）と `src/components/FindBar.tsx`（UI）。
+
+- `Cmd+F` で画面上部中央に検索バーを表示し、検索欄にフォーカスする
+  - エディタで1行以内のテキストを選択していれば、それを検索語にする
+  - 選択が無ければ前回の検索語を全選択した状態で開く
+- 打つたびにインクリメンタルに検索し、全ヒットを薄く・現在のヒットを暖色で強調する
+  - 現在のヒットはカーソル位置（または直前のヒット）以降で最初のもの。画面外なら中央までスクロール
+  - IME変換中（未確定）は検索しない
+- `Enter` / `Shift+Enter`（検索欄）、`Cmd+G` / `Shift+Cmd+G`（どこからでも）で次/前のヒットへ。端では回り込む
+- `Esc` で閉じると、現在のヒットを選択した状態でエディタに戻る
+- 対象は本文のみ（タイトル・サイドメモは対象外）。大文字小文字は区別しない。正規表現は使えない
+- 検索はテキストブロック（段落・見出し等）単位で、段落や改行をまたぐ語句はヒットしない
+- 検索バーを開いたまま本文を編集すると再検索し、現在のヒットはなるべく同じ箇所に留める
+- ファイル切り替え・Rewind 起動時には閉じる
+
+---
+
 ## キーボードショートカット
 
 実装済みのショートカット（`src/App.tsx`、ヘルプは `Cmd+/`）。
@@ -418,12 +440,15 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 | `Cmd+S` | 保存 |
 | `Cmd+N` | 新規ファイル（現在の内容を保存してから新規作成） |
 | `Cmd+O` | ファイルオーバーレイを開く/閉じる |
+| `Cmd+F` | 文書内検索 |
+| `Enter` / `Shift+Enter`（検索欄） | 次/前のヒットへ |
+| `Cmd+G` / `Shift+Cmd+G`（検索中） | 次/前のヒットへ |
 | `Cmd+/` | ショートカット一覧 |
 | `Cmd+,` | 環境設定 |
 | `Shift+Cmd+スクロール` | タイムマシン（Rewind）起動・移動 |
 | `← / →`（Rewind中） | スナップショットを 1 つ戻る/進む |
 | `Enter`（Rewind中） | その時点に復元 |
-| `Esc` | モーダルを閉じる / Rewind を終了 |
+| `Esc` | モーダルを閉じる / Rewind を終了 / 文書内検索を閉じる |
 
 このほか、Milkdown(ProseMirror) 標準の `Cmd+B` / `Cmd+I` / `Cmd+Z` などの編集ショートカットが使える。
 
@@ -517,6 +542,7 @@ CREATE VIRTUAL TABLE search_index USING fts5(
 - [x] タイマー（効果音付き）
 - [x] プライベートファイル指定
 - [x] Reconcile（ファイルシステム ↔ DB 同期）／旧DBのマイグレーション
+- [x] 文書内検索（Cmd+F）
 
 ---
 

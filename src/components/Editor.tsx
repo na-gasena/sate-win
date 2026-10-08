@@ -11,6 +11,7 @@ import { Decoration, DecorationSet } from '@milkdown/prose/view';
 import { splitBlock } from '@milkdown/prose/commands';
 import type { Memo } from '../lib/frontmatter';
 import { createMemoPlugin, memoPluginKey, getPositions, syncPositionsToMemos } from './memoDecorationPlugin';
+import { searchPlugin } from './searchPlugin';
 import { controlCharFilterPlugin } from './controlCharFilterPlugin';
 
 interface EditorComponentProps {
@@ -151,6 +152,7 @@ function MilkdownEditor({ onChange, initialContent = '', memosRef, editorViewRef
       .use(typewriterScrollPlugin)
       .use(selectionHighlightPlugin)
       .use(clipboardTextSerializerPlugin)
+      .use(searchPlugin)
       .use(controlCharFilterPlugin)
       .use(memoPlugin)
       .config((ctx) => {
