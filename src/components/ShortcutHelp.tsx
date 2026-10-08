@@ -12,6 +12,17 @@ const sections = [
     ],
   },
   {
+    title: 'Find',
+    items: [
+      { keys: ['Cmd', 'F'], description: '文書内を検索' },
+      { keys: ['Enter'], description: '次のヒットへ' },
+      { keys: ['Shift', 'Enter'], description: '前のヒットへ' },
+      { keys: ['Cmd', 'G'], description: '次のヒットへ（エディタから）' },
+      { keys: ['Shift', 'Cmd', 'G'], description: '前のヒットへ（エディタから）' },
+      { keys: ['Esc'], description: '閉じてヒット箇所を選択' },
+    ],
+  },
+  {
     title: 'Rewind',
     items: [
       { keys: ['Shift', 'Cmd', 'Scroll'], description: 'スナップショットを遡る/進む' },

@@ -9,6 +9,8 @@ import FileHeader from './components/FileHeader';
 import SideMemoLayer from './components/SideMemoLayer';
 import RewindOverlay from './components/RewindOverlay';
 import Timer from './components/Timer';
+import FindBar, { type FindRequest } from './components/FindBar';
+import { selectionAsQuery, stepSearch } from './components/searchPlugin';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import { usePublish } from './hooks/usePublish';
@@ -47,6 +49,7 @@ function App() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
+  const [findRequest, setFindRequest] = useState<FindRequest | null>(null);
 
   // ---- Rewind state ----
   const [rewindActive, setRewindActive] = useState(false);
@@ -121,6 +124,7 @@ function App() {
     setSnapshots(snaps);
     setRewindIndex(snaps.length - 1); // 最新から開始
     setRewindActive(true);
+    setFindRequest(null);
     wheelAccumRef.current = 0;
     // エディタからフォーカスを外して、矢印キー等が ProseMirror に流れないようにする
     if (document.activeElement instanceof HTMLElement) {
@@ -229,21 +233,38 @@ function App() {
         }
       }
       if (e.metaKey && e.key === 'o') { e.preventDefault(); setShowFileOpen((v) => !v); }
+      if (e.metaKey && e.key === 'f') {
+        e.preventDefault();
+        if (!showShortcuts && !showSettings && !showFileOpen) {
+          // エディタで選択中のテキストがあれば検索語にする。
+          // 検索欄にいるときに押し直した場合は、エディタに残っている古い選択で
+          // 入力中のクエリを上書きしないよう、エディタにフォーカスがあるときだけ見る。
+          const view = editorViewRef.current;
+          const seed = view && !view.isDestroyed && view.hasFocus() ? selectionAsQuery(view.state) : '';
+          setFindRequest((r) => ({ seq: (r?.seq ?? 0) + 1, seed }));
+        }
+      }
+      if (e.metaKey && e.key.toLowerCase() === 'g' && findRequest) {
+        e.preventDefault();
+        stepSearch(editorViewRef.current, e.shiftKey ? -1 : 1);
+      }
       if (e.metaKey && e.key === '/') { e.preventDefault(); setShowShortcuts((v) => !v); }
       if (e.metaKey && e.key === ',') { e.preventDefault(); setShowSettings((v) => !v); }
       if (e.key === 'Escape') {
         if (showSettings) { e.preventDefault(); setShowSettings(false); }
         else if (showShortcuts) { e.preventDefault(); setShowShortcuts(false); }
         else if (showFileOpen) { e.preventDefault(); setShowFileOpen(false); }
+        else if (findRequest) { e.preventDefault(); setFindRequest(null); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showShortcuts, showSettings, showFileOpen, saveFile, initFile, content, rewindActive, exitRewind, commitRewind, stepRewind]);
+  }, [showShortcuts, showSettings, showFileOpen, findRequest, saveFile, initFile, content, rewindActive, exitRewind, commitRewind, stepRewind]);
 
-  // ファイルが切り替わったら（新規含め）Rewind は強制終了
+  // ファイルが切り替わったら（新規含め）Rewind と文書内検索は強制終了
   useEffect(() => {
     exitRewind();
+    setFindRequest(null);
   }, [fileName, exitRewind]);
 
   useEffect(() => {
@@ -291,6 +312,11 @@ function App() {
       )}
       {!rewindActive && <WordCount count={charCount} />}
       {!rewindActive && <Timer />}
+      <FindBar
+        request={findRequest}
+        editorViewRef={editorViewRef}
+        onClose={() => setFindRequest(null)}
+      />
       <ShortcutHelp visible={showShortcuts} onClose={() => setShowShortcuts(false)} />
       <SettingsDialog
         visible={showSettings}
