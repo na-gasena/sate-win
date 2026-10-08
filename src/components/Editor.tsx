@@ -6,7 +6,7 @@ import { listener, listenerCtx } from '@milkdown/plugin-listener';
 import { useEditor, Milkdown, MilkdownProvider, useInstance } from '@milkdown/react';
 import { ProsemirrorAdapterProvider } from '@prosemirror-adapter/react';
 import { $prose } from '@milkdown/utils';
-import { Plugin, PluginKey } from '@milkdown/prose/state';
+import { Plugin, PluginKey, TextSelection } from '@milkdown/prose/state';
 import { Decoration, DecorationSet } from '@milkdown/prose/view';
 import { splitBlock } from '@milkdown/prose/commands';
 import type { Memo } from '../lib/frontmatter';
@@ -49,19 +49,59 @@ const clipboardTextSerializerPlugin = $prose(() => {
   });
 });
 
-// カーソルがウインドウ下端に張り付かないように、下端から2行分の余白を
-// 保ってスクロールさせる。scrollIntoView はデフォルトだと「カーソルが
-// 見える」最小限しかスクロールしないため、書き続けると常に最下端を
-// 見つめることになる。
-// 2行分 = font-size 18px × line-height 2 × 2行 = 72px
-const SCROLL_BOTTOM_MARGIN = 72;
-const scrollBottomMarginPlugin = $prose(() => {
+// タイプライター方式のスクロール。書いている行が画面の垂直中央より下に
+// 行かないように、ProseMirror がカーソルを画面内に収めるタイミング
+// （入力・改行・貼り付け・Undo 等）でカーソル行を中央まで持ち上げる。
+// 中央より上で書いている間はスクロールしない（上のほうを直しているときに
+// 1文字目で画面が跳ばないように）。
+//
+// ただし上下キーでのカーソル移動には適用しない。上下キーの移動は WebKit が行い、
+// カーソルが画面外に出れば WebKit 自身が画面中央へスクロールさせる。そこへ
+// ProseMirror が後追いでスクロールすると、WebKit が描いたカーソルの残像が
+// 元の位置に残ることがある。
+//
+// 上下キーの keydown から、ProseMirror がカーソル移動を読み取ってスクロールを
+// 要求するまでの猶予（ProseMirror 内部ではキー由来とみなす期間が 50ms）
+const VERTICAL_KEY_WINDOW_MS = 100;
+
+/** 一番近いスクロールコンテナ（Sate では .app） */
+function scrollParent(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const { overflowY } = getComputedStyle(p);
+    if (overflowY === 'auto' || overflowY === 'scroll') return p;
+  }
+  return null;
+}
+
+const typewriterScrollPlugin = $prose(() => {
+  let verticalKeyAt = 0;
   return new Plugin({
-    key: new PluginKey('scroll-bottom-margin'),
+    key: new PluginKey('typewriter-scroll'),
     props: {
-      // カーソルが下端から threshold 以内に入ったら、margin の位置まで持ち上げる
-      scrollThreshold: { top: 0, right: 0, bottom: SCROLL_BOTTOM_MARGIN, left: 0 },
-      scrollMargin: { top: 0, right: 0, bottom: SCROLL_BOTTOM_MARGIN, left: 0 },
+      handleKeyDown(_view, event) {
+        verticalKeyAt = event.key === 'ArrowUp' || event.key === 'ArrowDown' ? Date.now() : 0;
+        return false;
+      },
+      // true を返すと ProseMirror 標準のスクロールは行われない
+      handleScrollToSelection(view) {
+        const { selection } = view.state;
+        // ノード選択（区切り線など）は ProseMirror 標準のスクロールに任せる
+        if (!(selection instanceof TextSelection)) return false;
+        // 上下キーでの移動は WebKit のスクロールに任せる
+        if (Date.now() - verticalKeyAt < VERTICAL_KEY_WINDOW_MS) return true;
+
+        const scroller = scrollParent(view.dom as HTMLElement);
+        if (!scroller) return false;
+        const caret = view.coordsAtPos(selection.head);
+        const box = scroller.getBoundingClientRect();
+        const caretMid = (caret.top + caret.bottom) / 2;
+        const center = box.top + box.height / 2;
+        // 中央より下に来た、または画面の上に外れた（Undo 等）ときだけ中央へ
+        if (caretMid > center || caret.top < box.top) {
+          scroller.scrollTop += caretMid - center;
+        }
+        return true;
+      },
     },
   });
 });
@@ -107,7 +147,7 @@ function MilkdownEditor({ onChange, initialContent = '', memosRef, editorViewRef
       .use(history)
       .use(listener)
       .use(shiftEnterAsSplitPlugin)
-      .use(scrollBottomMarginPlugin)
+      .use(typewriterScrollPlugin)
       .use(selectionHighlightPlugin)
       .use(clipboardTextSerializerPlugin)
       .use(memoPlugin)
