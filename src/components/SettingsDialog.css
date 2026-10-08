@@ -70,6 +70,27 @@
   background: #4a4a48;
 }
 
+.settings-input {
+  box-sizing: border-box;
+  width: 100%;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 13px;
+  color: var(--text);
+  background: #1a1a18;
+  border: 1px solid #3a3a38;
+  border-radius: 6px;
+  padding: 8px 12px;
+  outline: none;
+}
+
+.settings-input:focus {
+  border-color: #4a4a48;
+}
+
+.settings-input::placeholder {
+  color: var(--text-muted);
+}
+
 .settings-hint {
   font-family: 'YuGothic', 'Yu Gothic', sans-serif;
   font-size: 11px;

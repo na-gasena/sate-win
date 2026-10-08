@@ -109,11 +109,9 @@ button.file-header-card-row {
   color: #d97870;
 }
 
-/* 公開ブロック。他の行と同様、ホバー時にだけ展開する。 */
+/* 公開ボタン。他の行と同様、ホバー時にだけ展開する。 */
 .file-header-publish {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
   max-height: 0;
   opacity: 0;
   overflow: hidden;
@@ -126,21 +124,9 @@ button.file-header-card-row {
 
 .file-header:hover .file-header-publish,
 .file-header:focus-within .file-header-publish {
-  max-height: 120px;
+  max-height: 40px;
   opacity: 1;
   margin-top: 8px;
-}
-
-.file-header-publish-status {
-  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: left;
-}
-
-.file-header-publish-actions {
-  display: flex;
-  gap: 6px;
 }
 
 .file-header-publish-btn {
@@ -163,17 +149,4 @@ button.file-header-card-row {
 .file-header-publish-btn:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.file-header-publish-retract {
-  color: #d97870;
-}
-
-.file-header-publish-error {
-  font-family: 'YuGothic', 'Yu Gothic', sans-serif;
-  font-size: 11px;
-  color: #d97870;
-  text-align: left;
-  white-space: pre-wrap;
-  word-break: break-word;
 }

@@ -17,14 +17,14 @@ export default function SettingsDialog({
   onClose,
 }: SettingsDialogProps) {
   const [baseDir, setBaseDir] = useState(settings.baseDir);
-  const [publishDir, setPublishDir] = useState(settings.publishDir ?? '');
+  const [publishCommand, setPublishCommand] = useState(settings.publishCommand ?? '');
 
   useEffect(() => {
     if (visible) {
       setBaseDir(settings.baseDir);
-      setPublishDir(settings.publishDir ?? '');
+      setPublishCommand(settings.publishCommand ?? '');
     }
-  }, [visible, settings.baseDir, settings.publishDir]);
+  }, [visible, settings.baseDir, settings.publishCommand]);
 
   const handleBrowse = useCallback(async () => {
     const selected = await open({
@@ -37,24 +37,13 @@ export default function SettingsDialog({
     }
   }, []);
 
-  const handleBrowsePublish = useCallback(async () => {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: '公開先（text-site リポジトリ）を選択',
-    });
-    if (selected) {
-      setPublishDir(selected);
-    }
-  }, []);
-
   if (!visible) return null;
 
   const handleSave = () => {
     const trimmed = baseDir.trim();
     if (!trimmed) return;
-    const trimmedPublish = publishDir.trim();
-    onSave({ ...settings, baseDir: trimmed, publishDir: trimmedPublish || undefined });
+    const trimmedPublish = publishCommand.trim();
+    onSave({ ...settings, baseDir: trimmed, publishCommand: trimmedPublish || undefined });
     onClose();
   };
 
@@ -91,26 +80,20 @@ export default function SettingsDialog({
         </div>
 
         <div className="settings-field">
-          <label className="settings-label">公開先（text-site リポジトリ）</label>
-          <div className="settings-dir-row">
-            <div className="settings-dir-display">{publishDir || '（未設定）'}</div>
-            <button
-              className="settings-btn settings-btn-browse"
-              onClick={handleBrowsePublish}
-            >
-              変更…
-            </button>
-            {publishDir && (
-              <button
-                className="settings-btn settings-btn-browse"
-                onClick={() => setPublishDir('')}
-              >
-                クリア
-              </button>
-            )}
-          </div>
+          <label className="settings-label">公開コマンド</label>
+          <input
+            type="text"
+            className="settings-input"
+            value={publishCommand}
+            onChange={(e) => setPublishCommand(e.target.value)}
+            placeholder="例: ~/text-site/publish.sh"
+            spellCheck={false}
+            autoCapitalize="off"
+            autoCorrect="off"
+          />
           <div className="settings-hint">
-            「公開」で md を書き出して git push するリポジトリ。未設定なら公開機能は無効。
+            「公開」で実行するシェルコマンド。公開用 md のパスを $SATE_FILE、ファイル名を $SATE_SLUG、
+            タイトルを $SATE_TITLE で受け取る。空欄なら公開機能は無効。
           </div>
         </div>
 

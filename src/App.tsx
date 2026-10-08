@@ -45,7 +45,7 @@ function App() {
     deleteCurrentFile,
     restoreSnapshot,
   } = useFile(settings?.baseDir ?? '');
-  const publish = usePublish(settings?.publishDir, fileName, title, content);
+  const publish = usePublish(settings?.publishCommand, fileName, title, content);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFileOpen, setShowFileOpen] = useState(false);
@@ -306,11 +306,8 @@ function App() {
           onTogglePrivate={updatePrivate}
           onDelete={deleteCurrentFile}
           publishConfigured={publish.configured}
-          publishStatus={publish.status}
           publishBusy={publish.busy}
-          publishError={publish.error}
           onPublish={publish.publish}
-          onRetract={publish.retract}
         />
       )}
       {!rewindActive && <WordCount count={charCount} />}
