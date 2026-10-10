@@ -192,7 +192,9 @@ function App() {
         return;
       }
 
-      wheelAccumRef.current += e.deltaY;
+      // マウスホイールは Shift を押していると macOS が縦スクロールを横（deltaX）に
+      // 振り替えるので、deltaY が 0 のときは deltaX を使う（トラックパッドは deltaY のまま）
+      wheelAccumRef.current += e.deltaY !== 0 ? e.deltaY : e.deltaX;
       let steps = 0;
       while (wheelAccumRef.current >= SCROLL_STEP_THRESHOLD) {
         // 下スクロール = 未来へ進む
