@@ -153,6 +153,19 @@ function App() {
     exitRewind();
   }, [restoreSnapshot, exitRewind]);
 
+  // モーダル（ファイルを開く / 設定 / ショートカット）を閉じたらエディタにフォーカスを戻す。
+  // ProseMirror の選択範囲は state に残っているので、focus するだけでキャレット位置が復元される。
+  // ファイルを開いた場合はエディタが作り直されて旧 view は破棄済みなので、ここでは触らない。
+  const anyModalOpen = showFileOpen || showSettings || showShortcuts;
+  const wasModalOpenRef = useRef(false);
+  useEffect(() => {
+    if (wasModalOpenRef.current && !anyModalOpen) {
+      const view = editorViewRef.current;
+      if (view && !view.isDestroyed) view.focus();
+    }
+    wasModalOpenRef.current = anyModalOpen;
+  }, [anyModalOpen]);
+
   // mousedown が ProseMirror 内で始まったかを覚えておく。
   // 本文をドラッグ選択してテキストエリアの外でボタンを離すと、click イベントは
   // mousedown と mouseup の共通祖先（.editor-container 等）で発火し、target が
