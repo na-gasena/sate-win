@@ -1,0 +1,50 @@
+# v* タグを push すると macOS 用の DMG をビルドして GitHub Releases にドラフトとして添付する。
+# 署名・公証はしていない（Apple Developer Program 未加入）。
+# 署名する場合は tauri-action の env に APPLE_CERTIFICATE 等を追加する:
+# https://v2.tauri.app/distribute/pipelines/github/
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Sate ${{ github.ref_name }}'
+          releaseBody: |
+            未署名ビルドです。初回起動時は README の「Gatekeeper の警告が出たら」を参照してください。
+          releaseDraft: true
+          prerelease: false
+          args: --target universal-apple-darwin --bundles app dmg
