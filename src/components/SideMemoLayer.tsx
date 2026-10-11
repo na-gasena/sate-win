@@ -18,6 +18,54 @@ interface SideMemoLayerProps {
 }
 
 export default function SideMemoLayer({ memos, onChange, editorViewRef }: SideMemoLayerProps) {
+  // ホバー判定は mouseenter/mouseleave や CSS の :hover に頼らない。
+  // pointer-events: none のレイヤー上にカードを置いている構造だと、WebKit が
+  // 「離れた」イベントを出さずハンドルが消えなくなる。ウインドウ全体の mousemove で
+  // どのカードの矩形に入っているかを都度判定する。
+  const layerRef = useRef<HTMLDivElement>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
+
+  /** 最後に観測したマウス座標で、どのカードに乗っているかを判定し直す */
+  const recomputeHover = useCallback(() => {
+    const layer = layerRef.current;
+    const m = lastMouseRef.current;
+    if (!layer || !m) return;
+    let found: string | null = null;
+    for (const el of layer.querySelectorAll<HTMLElement>('[data-memo-id]')) {
+      const r = el.getBoundingClientRect();
+      if (m.x >= r.left && m.x <= r.right && m.y >= r.top && m.y <= r.bottom) {
+        found = el.dataset.memoId ?? null;
+        break;
+      }
+    }
+    setHoveredId((prev) => (prev === found ? prev : found));
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const onMove = (e: MouseEvent) => {
+      lastMouseRef.current = { x: e.clientX, y: e.clientY };
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        recomputeHover();
+      });
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [recomputeHover]);
+
+  // ドロップ後はカードが行位置へスナップして動くのに、マウスは動かないので
+  // 判定が走らない。位置確定後に最後の座標で判定し直す。
+  const handleDragEnd = useCallback(() => {
+    requestAnimationFrame(recomputeHover);
+    setTimeout(recomputeHover, 100);
+  }, [recomputeHover]);
+
   // ── ガターダブルクリックでメモ作成 ──
   const handleGutterDoubleClick = useCallback(
     (side: 'left' | 'right', e: React.MouseEvent) => {
@@ -33,13 +81,16 @@ export default function SideMemoLayer({ memos, onChange, editorViewRef }: SideMe
   );
 
   return (
-    <div className="side-memo-layer">
+    <div className="side-memo-layer" ref={layerRef}>
       <div className="side-memo-gutter side-memo-gutter-left" onDoubleClick={(e) => handleGutterDoubleClick('left', e)} />
       <div className="side-memo-gutter side-memo-gutter-right" onDoubleClick={(e) => handleGutterDoubleClick('right', e)} />
       {memos.map((m) => (
         <MemoCard
           key={m.id}
           memo={m}
+          hovered={hoveredId === m.id}
+          onTyping={() => setHoveredId(null)}
+          onDragEnd={handleDragEnd}
           onChange={(id, content) => onChange(memos.map((x) => (x.id === id ? { ...x, content } : x)))}
           onDelete={(id) => onChange(memos.filter((x) => x.id !== id))}
           editorViewRef={editorViewRef}
@@ -53,19 +104,21 @@ export default function SideMemoLayer({ memos, onChange, editorViewRef }: SideMe
 
 interface MemoCardProps {
   memo: Memo;
+  /** 親が mousemove で判定したホバー状態 */
+  hovered: boolean;
+  /** 入力が始まったら呼ぶ（ハンドルを引っ込める） */
+  onTyping: () => void;
+  /** ドラッグでの移動が確定したら呼ぶ */
+  onDragEnd: () => void;
   onChange: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   editorViewRef: React.RefObject<EditorView | null>;
 }
 
-function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
+function MemoCard({ memo, hovered, onTyping, onDragEnd, onChange, onDelete, editorViewRef }: MemoCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
-  // ハンドル/削除ボタンの表示は CSS の :hover に頼らず自前で管理する。
-  // ガターのダブルクリックで作ったカードはカーソルの真下に現れるため、
-  // WebKit の :hover が張り付いたまま更新されず、ハンドルが消えないことがある。
-  const [hovered, setHovered] = useState(false);
   const isNew = useRef(memo.content === '');
 
   // ── 自動高さ調整 ──
@@ -95,13 +148,13 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
   // ── キーボード ──
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     // 書き始めたらハンドルは引っ込める（次にマウスが動いたら再表示）
-    setHovered(false);
+    onTyping();
     if (e.key === 'Escape') {
       e.preventDefault();
       (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
     }
     e.stopPropagation();
-  }, []);
+  }, [onTyping]);
 
   // ── ドラッグ ──
   const handleDragStart = useCallback((e: React.MouseEvent) => {
@@ -132,18 +185,17 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
       if (pos != null) {
         view.dispatch(view.state.tr.setMeta(memoPluginKey, { memoId: memo.id, pos }));
       }
+      onDragEnd();
     };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  }, [memo.id, editorViewRef]);
+  }, [memo.id, editorViewRef, onDragEnd]);
 
   return (
     <div
       ref={cardRef}
       data-memo-id={memo.id}
       className={`memo-card memo-card--${memo.side}${focused ? ' memo-card--focused' : ''}${hovered ? ' memo-card--hover' : ''}`}
-      onMouseMove={() => { if (!hovered) setHovered(true); }}
-      onMouseLeave={() => setHovered(false)}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
     >
