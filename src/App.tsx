@@ -153,8 +153,18 @@ function App() {
     exitRewind();
   }, [restoreSnapshot, exitRewind]);
 
+  // mousedown が ProseMirror 内で始まったかを覚えておく。
+  // 本文をドラッグ選択してテキストエリアの外でボタンを離すと、click イベントは
+  // mousedown と mouseup の共通祖先（.editor-container 等）で発火し、target が
+  // ProseMirror の外になる。それを「余白クリック」と誤認して選択を潰さないようにする。
+  const pressStartedInEditorRef = useRef(false);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    pressStartedInEditorRef.current = !!(e.target as HTMLElement).closest('.ProseMirror');
+  }, []);
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (rewindActive) return;
+    if (pressStartedInEditorRef.current) return;
     if (showShortcuts || showSettings) return;
     const target = e.target as HTMLElement;
     if (target.closest('.title-input')) return;
@@ -279,7 +289,7 @@ function App() {
   if (!loaded || !settings) return null;
 
   return (
-    <div className="app" onClick={handleClick}>
+    <div className="app" onClick={handleClick} onMouseDown={handleMouseDown}>
       <div className="editor-container" ref={editorContainerRef}>
         <div className="editor-wrapper">
           <TitleInput key={`title-${fileName}-${reloadKey}`} value={title} onChange={updateTitle} editorViewRef={editorViewRef} />
