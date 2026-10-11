@@ -95,7 +95,7 @@
   cursor: grabbing;
 }
 
-.memo-card:hover .memo-card-drag,
+.memo-card--hover .memo-card-drag,
 .memo-card--dragging .memo-card-drag {
   opacity: 1;
   background: linear-gradient(to bottom, var(--accent), transparent);
@@ -123,7 +123,7 @@
   padding: 0;
 }
 
-.memo-card:hover .memo-card-delete {
+.memo-card--hover .memo-card-delete {
   opacity: 0.6;
 }
 

@@ -62,6 +62,10 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(false);
+  // ハンドル/削除ボタンの表示は CSS の :hover に頼らず自前で管理する。
+  // ガターのダブルクリックで作ったカードはカーソルの真下に現れるため、
+  // WebKit の :hover が張り付いたまま更新されず、ハンドルが消えないことがある。
+  const [hovered, setHovered] = useState(false);
   const isNew = useRef(memo.content === '');
 
   // ── 自動高さ調整 ──
@@ -90,6 +94,8 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
 
   // ── キーボード ──
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // 書き始めたらハンドルは引っ込める（次にマウスが動いたら再表示）
+    setHovered(false);
     if (e.key === 'Escape') {
       e.preventDefault();
       (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus();
@@ -135,7 +141,9 @@ function MemoCard({ memo, onChange, onDelete, editorViewRef }: MemoCardProps) {
     <div
       ref={cardRef}
       data-memo-id={memo.id}
-      className={`memo-card memo-card--${memo.side}${focused ? ' memo-card--focused' : ''}`}
+      className={`memo-card memo-card--${memo.side}${focused ? ' memo-card--focused' : ''}${hovered ? ' memo-card--hover' : ''}`}
+      onMouseMove={() => { if (!hovered) setHovered(true); }}
+      onMouseLeave={() => setHovered(false)}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => e.stopPropagation()}
     >
