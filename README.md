@@ -2,9 +2,9 @@
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/sate_header_dark.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/sate_header_light.png">
-    <img src="docs/sate_header_light.png" alt="Sate" width="600">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/sate-header-dark-v2.png">
+    <source media="(prefers-color-scheme: light)" srcset="docs/sate-header-light-v2.png">
+    <img src="docs/sate-header-light-v2.png" alt="Sate" width="600">
   </picture>
 </p>
 
