@@ -12,6 +12,21 @@ use tauri::Manager;
 ///
 /// GUI から起動したアプリは PATH が最小限なので、ログインシェル（`$SHELL -lc`）で実行して
 /// git や Homebrew のコマンド、ssh-agent をユーザーのシェルと同じように使えるようにする。
+/// 指定したファイルを Finder で表示する（`open -R`）。
+#[tauri::command]
+fn reveal_in_finder(path: String) -> Result<(), String> {
+    let status = std::process::Command::new("open")
+        .arg("-R")
+        .arg(&path)
+        .status()
+        .map_err(|e| format!("Finder の起動に失敗: {e}"))?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("Finder で表示できませんでした: {path}"))
+    }
+}
+
 #[tauri::command]
 async fn run_publish_command(
     command: String,
@@ -66,7 +81,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![run_publish_command])
+        .invoke_handler(tauri::generate_handler![run_publish_command, reveal_in_finder])
         .setup(|app| {
             // Get the main window and set fullscreen
             if let Some(window) = app.get_webview_window("main") {

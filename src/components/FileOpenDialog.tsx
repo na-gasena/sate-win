@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { Menu } from '@tauri-apps/api/menu';
 import { type FileRecord, type FileSortOrder, getAllFiles, searchFiles, getFileById } from '../lib/db';
 import './FileOpenDialog.css';
 
@@ -138,6 +140,35 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
     [items, selectedIndex, onOpen, onClose]
   );
 
+  // 右クリックでネイティブのコンテキストメニューを出す
+  const handleContextMenu = useCallback(
+    async (e: React.MouseEvent, index: number, item: DisplayItem) => {
+      e.preventDefault();
+      if (!item.current_path) return;
+      setSelectedIndex(index);
+      const fullPath = `${dirPath}/${item.current_path}`;
+      try {
+        const menu = await Menu.new({
+          items: [
+            {
+              id: 'reveal-in-finder',
+              text: 'Finderで開く',
+              action: () => {
+                invoke('reveal_in_finder', { path: fullPath }).catch((err) => {
+                  console.error('Failed to reveal in Finder:', err);
+                });
+              },
+            },
+          ],
+        });
+        await menu.popup();
+      } catch (err) {
+        console.error('Failed to show context menu:', err);
+      }
+    },
+    [dirPath],
+  );
+
   if (!visible) return null;
 
   return (
@@ -175,6 +206,7 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
                 className={`fileopen-item${i === selectedIndex ? ' fileopen-item--selected' : ''}`}
                 onClick={() => { if (item.current_path) { onOpen(item.current_path); onClose(); } }}
                 onMouseEnter={() => setSelectedIndex(i)}
+                onContextMenu={(e) => handleContextMenu(e, i, item)}
               >
                 <div className="fileopen-item-name">
                   {item.name}
