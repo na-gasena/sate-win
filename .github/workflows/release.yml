@@ -44,7 +44,10 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Sate ${{ github.ref_name }}'
           releaseBody: |
-            未署名ビルドです。初回起動時は README の「Gatekeeper の警告が出たら」を参照してください。
+            未署名ビルドです。初回起動時の Gatekeeper の警告の解除方法は README の「インストール」を参照してください。
           releaseDraft: true
           prerelease: false
-          args: --target universal-apple-darwin --bundles app dmg
+          # 自動更新は使わないので latest.json は作らない
+          includeUpdaterJson: false
+          # .app を指定すると tar.gz でも添付されるので DMG だけにする
+          args: --target universal-apple-darwin --bundles dmg
