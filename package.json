@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "lint:check": "node scripts/check-lint.mjs",
+    "test": "node --experimental-strip-types --test tests/frontmatter.test.mts tests/platform.test.mts tests/publish.test.mts tests/saveQueue.test.mts",
     "preview": "vite preview",
     "tauri": "tauri"
   },

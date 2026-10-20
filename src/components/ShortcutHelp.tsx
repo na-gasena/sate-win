@@ -1,4 +1,5 @@
 import './ShortcutHelp.css';
+import { shortcutKeyLabel } from '../lib/platform';
 
 const sections = [
   {
@@ -79,7 +80,7 @@ export default function ShortcutHelp({ visible, onClose }: ShortcutHelpProps) {
                   <span className="shortcut-desc">{s.description}</span>
                   <span className="shortcut-keys">
                     {s.keys.map((k, j) => (
-                      <kbd key={j}>{k}</kbd>
+                      <kbd key={j}>{shortcutKeyLabel(k)}</kbd>
                     ))}
                   </span>
                 </div>

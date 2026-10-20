@@ -6,7 +6,8 @@ import {
   exists,
   BaseDirectory,
 } from '@tauri-apps/plugin-fs';
-import { homeDir, join } from '@tauri-apps/api/path';
+import { documentDir, join } from '@tauri-apps/api/path';
+import { getIdentifier } from '@tauri-apps/api/app';
 
 // Settings are stored in ~/Library/Application Support/club.image.sate/ (macOS)
 // Tauri's AppConfig BaseDirectory maps to the OS-standard config location.
@@ -20,6 +21,7 @@ export interface Settings {
 export function useSettings() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load settings from file on mount
   useEffect(() => {
@@ -35,29 +37,20 @@ export function useSettings() {
           const parsed = JSON.parse(text) as Partial<Settings>;
           if (parsed.baseDir) {
             setSettings({ baseDir: parsed.baseDir, publishCommand: parsed.publishCommand });
+            return;
           }
         }
 
-        // If no settings loaded, use default
-        if (!settings) {
-          const home = await homeDir();
-          const defaultDir = await join(home, 'Documents', 'Sate');
-          setSettings((prev) => prev ?? { baseDir: defaultDir });
-        }
+        const vaultName = (await getIdentifier()).endsWith('.dev') ? 'Sate Dev' : 'Sate';
+        const defaultDir = await join(await documentDir(), vaultName);
+        setSettings({ baseDir: defaultDir });
       } catch (err) {
         console.error('Failed to load settings:', err);
-        try {
-          const home = await homeDir();
-          const defaultDir = await join(home, 'Documents', 'Sate');
-          setSettings({ baseDir: defaultDir });
-        } catch {
-          setSettings({ baseDir: '~/Documents/Sate' });
-        }
+        setError(`設定または保存先を読み込めませんでした: ${String(err)}`);
       } finally {
         setLoaded(true);
       }
     })();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateSettings = useCallback(async (newSettings: Settings) => {
@@ -84,6 +77,7 @@ export function useSettings() {
   return {
     settings,
     loaded,
+    error,
     updateSettings,
   };
 }

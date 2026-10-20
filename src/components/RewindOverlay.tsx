@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { RichDiffLine } from '../lib/diff';
 import './RewindOverlay.css';
+import { primaryModifierLabel } from '../lib/platform';
 
 export interface RewindSnapshotMeta {
   id: number;
@@ -126,7 +127,7 @@ export default function RewindOverlay({
           />
         </div>
         <div className="rewind-scrubber-hint">
-          Shift+Cmd+スクロールで移動 · Enter で復元 · Esc で戻る
+          Shift+{primaryModifierLabel}+スクロールで移動 · Enter で復元 · Esc で戻る
         </div>
       </div>
     </div>

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { Menu } from '@tauri-apps/api/menu';
+import { join } from '@tauri-apps/api/path';
+import { fileManagerLabel } from '../lib/platform';
 import { type FileRecord, type FileSortOrder, getAllFiles, searchFiles, getFileById } from '../lib/db';
 import './FileOpenDialog.css';
 
@@ -146,16 +148,16 @@ export default function FileOpenDialog({ visible, dirPath, onOpen, onClose }: Fi
       e.preventDefault();
       if (!item.current_path) return;
       setSelectedIndex(index);
-      const fullPath = `${dirPath}/${item.current_path}`;
       try {
+        const fullPath = await join(dirPath, item.current_path);
         const menu = await Menu.new({
           items: [
             {
-              id: 'reveal-in-finder',
-              text: 'Finderで開く',
+              id: 'reveal-in-file-manager',
+              text: `${fileManagerLabel}で表示`,
               action: () => {
-                invoke('reveal_in_finder', { path: fullPath }).catch((err) => {
-                  console.error('Failed to reveal in Finder:', err);
+                invoke('reveal_in_file_manager', { path: fullPath }).catch((err) => {
+                  console.error('Failed to reveal file:', err);
                 });
               },
             },

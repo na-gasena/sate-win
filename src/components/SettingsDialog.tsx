@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { Settings } from '../hooks/useSettings';
 import './SettingsDialog.css';
+import { desktopPlatform } from '../lib/platform';
 
 interface SettingsDialogProps {
   visible: boolean;
@@ -86,14 +87,16 @@ export default function SettingsDialog({
             className="settings-input"
             value={publishCommand}
             onChange={(e) => setPublishCommand(e.target.value)}
-            placeholder="例: ~/text-site/publish.sh"
+            placeholder={desktopPlatform === 'windows' ? '例: & "$HOME/text-site/publish.ps1"' : '例: ~/text-site/publish.sh'}
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
           />
           <div className="settings-hint">
-            「公開」で実行するシェルコマンド。公開用 md のパスを $SATE_FILE、ファイル名を $SATE_SLUG、
-            タイトルを $SATE_TITLE で受け取る。空欄なら公開機能は無効。
+            「公開」で実行する{desktopPlatform === 'windows' ? 'PowerShell' : 'シェル'}コマンド。
+            公開用 md のパスを {desktopPlatform === 'windows' ? '$env:SATE_FILE' : '$SATE_FILE'}、
+            ファイル名を {desktopPlatform === 'windows' ? '$env:SATE_SLUG' : '$SATE_SLUG'}、
+            タイトルを {desktopPlatform === 'windows' ? '$env:SATE_TITLE' : '$SATE_TITLE'} で受け取る。空欄なら公開機能は無効。
           </div>
         </div>
 

@@ -14,11 +14,13 @@ import { selectionAsQuery, stepSearch } from './components/searchPlugin';
 import { useFile } from './hooks/useFile';
 import { useSettings } from './hooks/useSettings';
 import { usePublish } from './hooks/usePublish';
+import { useSaveOnClose } from './hooks/useSaveOnClose';
 import { initDatabase, getSnapshots, type SnapshotRecord } from './lib/db';
 import { reconcile } from './lib/reconcile';
 import { parseFrontMatter, type Memo } from './lib/frontmatter';
 import { diffLinesRich, cleanMarkdownForDisplay, type RichDiffLine } from './lib/diff';
 import { Selection } from '@milkdown/prose/state';
+import { hasPrimaryModifier, rewindWheelDelta } from './lib/platform';
 import './App.css';
 
 // 1ステップ進める/戻すために必要なホイール累積量。trackpad の小刻みなイベントを
@@ -26,7 +28,7 @@ import './App.css';
 const SCROLL_STEP_THRESHOLD = 50;
 
 function App() {
-  const { settings, loaded, updateSettings } = useSettings();
+  const { settings, loaded, error: settingsError, updateSettings } = useSettings();
   const {
     fileName,
     fileId,
@@ -40,11 +42,13 @@ function App() {
     updateMemos,
     updatePrivate,
     saveFile,
+    flushPendingSave,
     openFile,
     initFile,
     deleteCurrentFile,
     restoreSnapshot,
   } = useFile(settings?.baseDir ?? '');
+  useSaveOnClose(flushPendingSave);
   const publish = usePublish(settings?.publishCommand, fileName, title, content);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -110,7 +114,7 @@ function App() {
     if (!id) return;
     // 現状をスナップショットとして保存しておく（戻れるように）
     try {
-      await saveFile(true);
+      if (!(await saveFile(true))) return;
     } catch {
       // 保存失敗は無視。スナップショット履歴での操作自体は続行
     }
@@ -201,7 +205,7 @@ function App() {
       // Shift + Cmd の同時押しのみで反応させる。
       // Cmd 単独だと、トラックパッドの慣性スクロール中に Cmd を押し下げた瞬間に
       // 誤発動してしまうため。Shift も要求することで意図的な操作に絞る。
-      if (!e.metaKey || !e.shiftKey) {
+      if (!hasPrimaryModifier(e) || !e.shiftKey) {
         wheelAccumRef.current = 0;
         return;
       }
@@ -217,7 +221,7 @@ function App() {
 
       // マウスホイールは Shift を押していると macOS が縦スクロールを横（deltaX）に
       // 振り替えるので、deltaY が 0 のときは deltaX を使う（トラックパッドは deltaY のまま）
-      wheelAccumRef.current += e.deltaY !== 0 ? e.deltaY : e.deltaX;
+      wheelAccumRef.current += rewindWheelDelta(e, window.innerHeight);
       let steps = 0;
       while (wheelAccumRef.current >= SCROLL_STEP_THRESHOLD) {
         // 下スクロール = 未来へ進む
@@ -237,6 +241,8 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.isComposing || e.keyCode === 229) return;
+      const primary = hasPrimaryModifier(e);
       // Rewind モード中はキーバインドを横取り（編集はさせない）
       if (rewindActive) {
         if (e.key === 'Escape') { e.preventDefault(); exitRewind(); return; }
@@ -247,18 +253,19 @@ function App() {
         if (!e.metaKey && !e.ctrlKey && e.key.length === 1) e.preventDefault();
         return;
       }
-      if (e.metaKey && e.key === 's') { e.preventDefault(); saveFile(true); }
-      if (e.metaKey && e.key === 'n') {
+      if (primary && e.key === 's') { e.preventDefault(); saveFile(true); }
+      if (primary && e.key === 'n') {
         e.preventDefault();
         if (content) {
-          saveFile(true).then(() => {
+          saveFile(true).then((saved) => {
+            if (!saved) return;
             initFile();
             setTimeout(() => { (document.querySelector('.ProseMirror') as HTMLElement | null)?.focus(); }, 160);
           });
         }
       }
-      if (e.metaKey && e.key === 'o') { e.preventDefault(); setShowFileOpen((v) => !v); }
-      if (e.metaKey && e.key === 'f') {
+      if (primary && e.key === 'o') { e.preventDefault(); setShowFileOpen((v) => !v); }
+      if (primary && e.key === 'f') {
         e.preventDefault();
         if (!showShortcuts && !showSettings && !showFileOpen) {
           // エディタで選択中のテキストがあれば検索語にする。
@@ -269,12 +276,12 @@ function App() {
           setFindRequest((r) => ({ seq: (r?.seq ?? 0) + 1, seed }));
         }
       }
-      if (e.metaKey && e.key.toLowerCase() === 'g' && findRequest) {
+      if (primary && e.key.toLowerCase() === 'g' && findRequest) {
         e.preventDefault();
         stepSearch(editorViewRef.current, e.shiftKey ? -1 : 1);
       }
-      if (e.metaKey && e.key === '/') { e.preventDefault(); setShowShortcuts((v) => !v); }
-      if (e.metaKey && e.key === ',') { e.preventDefault(); setShowSettings((v) => !v); }
+      if (primary && e.key === '/') { e.preventDefault(); setShowShortcuts((v) => !v); }
+      if (primary && e.key === ',') { e.preventDefault(); setShowSettings((v) => !v); }
       if (e.key === 'Escape') {
         if (showSettings) { e.preventDefault(); setShowSettings(false); }
         else if (showShortcuts) { e.preventDefault(); setShowShortcuts(false); }
@@ -299,6 +306,7 @@ function App() {
       .catch((err) => console.error('Failed to init DB:', err));
   }, [loaded, settings]);
 
+  if (settingsError) return <div role="alert" style={{ padding: '2rem' }}>{settingsError}</div>;
   if (!loaded || !settings) return null;
 
   return (
@@ -346,7 +354,9 @@ function App() {
       <SettingsDialog
         visible={showSettings}
         settings={settings}
-        onSave={updateSettings}
+        onSave={async (nextSettings) => {
+          if (await flushPendingSave()) await updateSettings(nextSettings);
+        }}
         onClose={() => setShowSettings(false)}
       />
       <FileOpenDialog

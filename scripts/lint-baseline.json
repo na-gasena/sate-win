@@ -1,0 +1,15 @@
+{
+  "upstreamCommit": "5c8cacb5e441acff7433471c5176b9223592a4e7",
+  "findings": [
+    { "file": "src/App.tsx", "rule": "react-hooks/refs", "severity": 2, "count": 5 },
+    { "file": "src/App.tsx", "rule": "react-hooks/set-state-in-effect", "severity": 2, "count": 1 },
+    { "file": "src/components/Editor.tsx", "rule": "react-hooks/refs", "severity": 2, "count": 3 },
+    { "file": "src/components/FileOpenDialog.tsx", "rule": "react-hooks/set-state-in-effect", "severity": 2, "count": 1 },
+    { "file": "src/components/FileOpenDialog.tsx", "rule": "react-hooks/immutability", "severity": 2, "count": 2 },
+    { "file": "src/components/FileOpenDialog.tsx", "rule": "react-hooks/exhaustive-deps", "severity": 1, "count": 2 },
+    { "file": "src/components/SettingsDialog.tsx", "rule": "react-hooks/set-state-in-effect", "severity": 2, "count": 1 },
+    { "file": "src/hooks/useFile.ts", "rule": "react-hooks/refs", "severity": 2, "count": 4 },
+    { "file": "src/hooks/useFile.ts", "rule": "react-hooks/set-state-in-effect", "severity": 2, "count": 1 },
+    { "file": "src/hooks/useTimer.ts", "rule": "react-hooks/set-state-in-effect", "severity": 2, "count": 1 }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Sate Dev",
+  "identifier": "io.github.na-gasena.satewin.dev",
+  "app": {
+    "windows": [
+      {
+        "title": "Sate Dev",
+        "width": 1200,
+        "height": 800,
+        "fullscreen": true,
+        "decorations": false,
+        "resizable": true
+      }
+    ]
+  }
+}

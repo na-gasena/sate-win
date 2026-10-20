@@ -15,6 +15,8 @@ import {
   extractFirstLine,
 } from '../lib/frontmatter';
 import { upsertFile, updateSearchIndex, addSnapshot, deleteFile as deleteFileFromDb } from '../lib/db';
+import { join } from '@tauri-apps/api/path';
+import { createSaveQueue } from '../lib/saveQueue';
 
 function generateDatePrefix(): string {
   const now = new Date();
@@ -81,6 +83,8 @@ export function useFile(dirPath: string) {
   const memosRef = useRef<Memo[]>(memos);
   const privateRef = useRef(isPrivate);
   const metadataRef = useRef<FileMetadata | null>(null);
+  const saveQueueRef = useRef(createSaveQueue());
+  const lastSaveFailedRef = useRef(false);
 
   fileNameRef.current = fileName;
   contentRef.current = content;
@@ -88,6 +92,7 @@ export function useFile(dirPath: string) {
   privateRef.current = isPrivate;
 
   const initFile = useCallback(async () => {
+    if (!dirPath) return;
     const name = await getNextFileName(dirPath);
     setFileName(name);
     fileNameRef.current = name;
@@ -98,14 +103,16 @@ export function useFile(dirPath: string) {
     setIsPrivate(false);
     setFileId(null);
     metadataRef.current = null;
+    lastSaveFailedRef.current = false;
   }, [dirPath]);
 
-  const saveFile = useCallback(async (force = false) => {
+  const performSave = useCallback(async (force = false): Promise<boolean> => {
+    if (!dirPath) return true;
     // クロージャではなく ref から読む（コメント参照: fileNameRef）
     const fileName = fileNameRef.current;
-    if (!fileName) return;
+    if (!fileName) return true;
     const currentContent = contentRef.current;
-    if (!currentContent && !force) return;
+    if (!currentContent && !force && !metadataRef.current) return true;
 
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -137,7 +144,7 @@ export function useFile(dirPath: string) {
       }
 
       const fileContent = buildFrontMatter(metadataRef.current) + currentContent;
-      const filePath = `${dirPath}/${fileName}`;
+      const filePath = await join(dirPath, fileName);
       await writeTextFile(filePath, fileContent);
 
       // --- DB 更新 ---
@@ -156,12 +163,32 @@ export function useFile(dirPath: string) {
       } catch {
         // DB未初期化の場合はここに来る。ファイル保存自体は成功してるので問題なし
       }
+      lastSaveFailedRef.current = false;
+      return true;
     } catch (err) {
       console.error('Failed to save:', err);
+      lastSaveFailedRef.current = true;
+      return false;
     } finally {
       setIsSaving(false);
     }
   }, [dirPath]);
+
+  // Serialize writes so a slower previous write cannot overwrite newer content.
+  const saveFile = useCallback((force = false) => {
+    return saveQueueRef.current.enqueue(() => performSave(force));
+  }, [performSave]);
+
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
+    for (;;) {
+      if (!(await saveQueueRef.current.wait())) return false;
+      if (saveTimerRef.current || lastSaveFailedRef.current) {
+        if (!(await saveFile(true))) return false;
+      } else if (saveQueueRef.current.pending === 0) {
+        return true;
+      }
+    }
+  }, [saveFile]);
 
   const updateContent = useCallback(
     (newContent: string) => {
@@ -170,9 +197,10 @@ export function useFile(dirPath: string) {
 
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
       }
 
-      if (newContent) {
+      if (newContent || metadataRef.current) {
         saveTimerRef.current = setTimeout(() => {
           saveFile();
         }, 1500);
@@ -187,11 +215,9 @@ export function useFile(dirPath: string) {
       // これをせずに内容を差し替えると、後からタイマーが発火したときに
       // 開いたファイルの内容が元のファイルへ書き込まれてしまう。
       // （直近 1.5 秒以内の編集が保存されないまま消える問題の防止も兼ねる）
-      if (saveTimerRef.current) {
-        await saveFile();
-      }
+      if (!(await flushPendingSave())) return;
       try {
-        const filePath = `${dirPath}/${name}`;
+        const filePath = await join(dirPath, name);
         const text = await readTextFile(filePath);
         const { metadata, body } = parseFrontMatter(text);
         setFileName(name);
@@ -209,7 +235,7 @@ export function useFile(dirPath: string) {
         console.error('Failed to open file:', err);
       }
     },
-    [dirPath, saveFile]
+    [dirPath, flushPendingSave]
   );
 
   useEffect(() => {
@@ -264,9 +290,10 @@ export function useFile(dirPath: string) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
+    await saveQueueRef.current.wait();
 
     try {
-      const filePath = `${dirPath}/${fileName}`;
+      const filePath = await join(dirPath, fileName);
       if (await exists(filePath)) {
         await remove(filePath);
       }
@@ -309,6 +336,7 @@ export function useFile(dirPath: string) {
   const restoreSnapshot = useCallback(
     async (snapshotContent: string) => {
       if (!fileName) return;
+      if (!(await flushPendingSave())) return;
       const { metadata, body } = parseFrontMatter(snapshotContent);
       if (!metadata) return;
 
@@ -341,7 +369,7 @@ export function useFile(dirPath: string) {
       try {
         await ensureDir(dirPath);
         const fileContent = buildFrontMatter(restored) + body;
-        const filePath = `${dirPath}/${fileName}`;
+        const filePath = await join(dirPath, fileName);
         await writeTextFile(filePath, fileContent);
 
         try {
@@ -358,7 +386,7 @@ export function useFile(dirPath: string) {
         console.error('Failed to restore snapshot:', err);
       }
     },
-    [fileName, dirPath],
+    [fileName, dirPath, flushPendingSave],
   );
 
   return {
@@ -376,6 +404,7 @@ export function useFile(dirPath: string) {
     updatePrivate,
     openFile,
     saveFile,
+    flushPendingSave,
     initFile,
     deleteCurrentFile,
     restoreSnapshot,
