@@ -1,9 +1,16 @@
 # Windows版の開発と確認
 
-このforkの開発先は `windows`。`main` は本家追従用。
+このforkの既定・開発ブランチは `windows`。`main` は本家追従用。
 詳しい設計と更新手順は [移植・保守方針](windows-port.md) を参照。
 
-## 必要なもの
+## インストールとソースコード
+
+[Windows版のReleases](https://github.com/na-gasena/sate-win/releases/latest) のAssetsから
+`Sate_0.1.0_x64-setup.exe` をダウンロードして実行する。
+`Source code (zip)` / `Source code (tar.gz)` は、そのReleaseのタグに対応するソースコード一式。
+インストール済みアプリの利用には、以下の開発用ツールは不要。
+
+## 開発に必要なもの
 
 - Windows x64（初期の検証対象）。ARM64は未検証。
 - Node.js 22.18以上とpnpm 11。
@@ -44,6 +51,8 @@ src-tauri/target/release/bundle/nsis/Sate_0.1.0_x64-setup.exe
 `sate.exe` は単体で起動できるが、WebView2 Runtimeは必要。
 インストーラーはユーザー単位のインストールを行う。現在はコード署名と自動更新を実装していない。
 本家のDMG用workflowとリリースタグ系列は維持し、Windows CIはインストーラーをartifactとして保存する。
+配布時はCI成功コミットに `windows-v*` タグを付け、そのCI成果物をGitHub Releaseに添付する。
+ソースコードのZIP / tar.gzはGitHub標準のAssetsを使い、インストーラーと同じタグのソースを提供する。
 
 ## データとOSごとの差
 
@@ -94,18 +103,19 @@ RustテストではWindows PowerShellを実行し、日本語・環境変数・�
 同じルール内で既存違反を置き換えたケースまでは検出できないため、diffのレビューも行う。
 基準値を自動的に更新してエラーを隠さない。
 
-### 2026-10-20のローカル結果
+### 2026-10-20の検証結果
 
 - Nodeテスト19件、WindowsのRustテスト3件が成功。
 - フロントエンドの型検査・ビルド、追加テスト自体の型検査が成功。
 - `pnpm lint:check` が成功。現時点の既存違反は15エラー・2警告（調査時は19エラー・2警告）。
 - `pnpm tauri build --bundles nsis` が成功し、実行ファイルとNSISインストーラーを生成。
-- Windowsアプリ操作の許可がタイムアウトしたため、実画面の操作確認は未実施。
+- [Windows / macOSのCI](https://github.com/na-gasena/sate-win/actions/runs/39381519798) が成功。
+- ユーザーによる実画面テストを実施済み（ユーザー確認）。
 - インストール・上書き更新・macOSの実機動作は未確認。
 
-これは常用前の検証が完了したことを意味しない。次の実機確認項目を残す。
+今後の更新時も、次の項目を実機で継続して確認する。
 
-## 常用前に残る実機確認
+## 継続して確認する実機項目
 
 - Microsoft IME / ATOKでの変換、再変換、確定時Enter、貼り付けとUndo/Redo。
 - 全画面・複数モニター・DPI・タイマー音・スリープ復帰。

@@ -1,5 +1,14 @@
 # Sate
 
+> **Windows版（このフォーク）**
+>
+> [Windows版のダウンロード（Releases）](https://github.com/na-gasena/sate-win/releases/latest) のAssetsから `Sate_0.1.0_x64-setup.exe` を取得してください。
+> 対応するソースコードも `Source code (zip)` / `Source code (tar.gz)` からダウンロードできます。
+>
+> [Windows版の開発・保存先・検証手順](docs/windows.md) / [本家更新への追従方針](docs/windows-port.md)
+>
+> 既定・開発ブランチは `windows`、本家追従用は `main` です。以下は[本家Sate](https://github.com/sngazm/sate)のmacOS向けREADMEです。
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/sate-header-dark-v2.png">
