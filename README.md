@@ -4,55 +4,46 @@
 >
 > [Windows版のダウンロード（Releases）](https://github.com/na-gasena/sate-win/releases/latest) のAssetsから `Sate_0.1.0_x64-setup.exe` でインストールしてください。
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/sate-header-dark-v2.png">
-    <source media="(prefers-color-scheme: light)" srcset="docs/sate-header-light-v2.png">
-    <img src="docs/sate-header-light-v2.png" alt="Sate" width="600">
-  </picture>
-</p>
+![Sate](docs/sate-header-light-v2.png)
 
-Sateは、あずま(@sngazm)が自分自身のために開発しているテキストエディタです。さて、と書き始めたあとはなるべく気を散らされることなく、頭の中のものをひたすら書き出すことに集中できる環境を目指しています。この文章はSateで書かれました。
+Sateは、あずま(@sngazm)さんが自分自身のために開発しているテキストエディタです。さて、と書き始めたあとはなるべく気を散らされることなく、頭の中のものをひたすら書き出すことに集中できる環境を目指しています。この文章はSateで書かれました。
 
 ![Sateで文章を書いているところ](docs/screenshot.jpg)
 
 ※このエディタは開発途上です。破壊的変更やバグなど、何かのはずみで今まで書いたものが全部消えたとしても自分の中で折り合いをつけられる人だけが使用してください。
 
-## 対象
+## 対象（Windows移植版）
 
-macOS
+Windows（x64／64bit）
 
 ## インストール
 
-このソフトのインストールは少し面倒です。なぜなら作者の私が年間99ドルのApple Developer Programのお金をケチっているからです。誰かが私に毎年99ドル払ってくれたらインストールが簡単になります。
+### Windowsインストーラー
 
-### 配布版（DMG）
+[Releases](https://github.com/na-gasena/sate-win/releases/latest) のAssetsから `Sate_0.1.0_x64-setup.exe` をダウンロードして実行してください。ユーザー単位でインストールされます。
 
-[Releases](https://github.com/sngazm/sate/releases) から最新の `.dmg` をダウンロードし、`Sate.app` を `/Applications` にコピーしてください。
-
-署名も公証もしていないので、初回起動時に「壊れているため開けません」と言われます。ターミナルで次を実行すると開けるようになります。
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Sate.app
-```
-
-または、一度開こうとした後に **システム設定 > プライバシーとセキュリティ** を開き、「このまま開く」を押してください。
+動作にはMicrosoft Edge WebView2 Runtimeが必要です。通常の利用にNode.jsやRustなどの開発用ツールは不要です。
 
 ### ソースからビルド
 
-必要なもの: [Node.js](https://nodejs.org/) 22 以上、[pnpm](https://pnpm.io/)、[Rust](https://rustup.rs/)、Xcode Command Line Tools（`xcode-select --install`）。
+必要なもの: [Node.js](https://nodejs.org/) 22.18以上、[pnpm](https://pnpm.io/) 11、[Rust](https://rustup.rs/)（MSVCツールチェーン）、Visual Studio C++Build Tools（「C++によるデスクトップ開発」とWindows SDK）、Microsoft Edge WebView2 Runtime。
 
-```bash
-git clone https://github.com/sngazm/sate.git
-cd sate
-pnpm install
-pnpm tauri build
-# 成果物: src-tauri/target/release/bundle/macos/Sate.app
+PowerShellで次を実行してください。
+
+```powershell
+git clone --branch windows https://github.com/na-gasena/sate-win.git
+cd sate-win
+pnpm install --frozen-lockfile
+pnpm tauri build --bundles nsis
+# 実行ファイル: src-tauri/target/release/sate.exe
+# インストーラー: src-tauri/target/release/bundle/nsis/Sate_0.1.0_x64-setup.exe
 ```
 
-自分でビルドしたアプリには上の警告は出ません。
+開発用の起動方法などは [Windows版の開発・確認手順](docs/windows.md) を参照してください。
 
 ## 特徴
+
+
 
 ### 余計なものをなるべく配置せず、書いている文章そのものが常に対象になる
 
@@ -90,22 +81,46 @@ Sateは最初から最後までタイトルをつける必要はありません�
 
 ## 操作方法
 
-| キー | 動作 |
-|---|---|
-| Cmd + O | 文章の一覧を開く |
-| Cmd + N | 新しい文章を作る |
-| Cmd + , | 環境設定を開く |
-| Cmd + / | すべてのショートカットを表示する |
 
-文章は `~/Documents/Sate/` に `.md` として保存されます。保存先は環境設定から変更できます。タイピングを止めて 1.5 秒後に自動保存されるので、保存の操作は要りません。
+| キー                                | 動作                      |
+| --------------------------------- | ----------------------- |
+| Ctrl + O                          | 文章の一覧・検索を開く／閉じる         |
+| Ctrl + N                          | 現在の文章を保存して、新しい文章を作る     |
+| Ctrl + S                          | 手動で保存する                 |
+| Ctrl + F                          | 現在の文章の中を検索する            |
+| Ctrl + G / Ctrl + Shift + G       | 検索中、次／前の検索結果へ移動する       |
+| Enter / Shift + Enter（検索欄）        | 次／前の検索結果へ移動する           |
+| Ctrl + Z / Ctrl + Shift + Z       | 元に戻す／やり直す               |
+| Ctrl + B / Ctrl + I               | 太字／斜体                   |
+| Ctrl + E                          | インラインコード                |
+| Ctrl + Alt + 1〜3 / Ctrl + Alt + 0 | 見出し1〜3／通常の本文に変換する       |
+| Ctrl + Alt + 7 / Ctrl + Alt + 8   | 番号付きリスト／箇条書き            |
+| Ctrl + Shift + B                  | 引用に変換する                 |
+| Tab / Shift + Tab（リスト内）           | インデントを増やす／減らす           |
+| Ctrl + Shift + マウススクロール           | 過去の保存履歴（Rewind）を開く・移動する |
+| ← / →（Rewind中）                    | 一つ前／後の履歴へ移動する           |
+| Enter（Rewind中）                    | 表示している時点の内容に復元する        |
+| Ctrl + ,                          | 環境設定を開く                 |
+| Ctrl + /                          | すべてのショートカットを表示する        |
+| Esc                               | 一覧・検索・設定を閉じる／Rewindから戻る |
+| Alt + F4                          | アプリを終了する                |
+
+
+起動すると新しい文章が開き、そのまま書き始められます。前に書いた文章を続けるときは、Ctrl + Oから選んでください。本文の先頭行で↑キーを押すとタイトル欄へ移動し、Enterで本文に戻ります。
+
+文章はWindowsの「ドキュメント」フォルダー内の `Sate` に `.md` として保存されます。保存先はCtrl + ,の環境設定から変更できます。タイピングを止めて1.5秒後に自動保存されるので、通常は保存操作を意識する必要はありません。
 
 ### データの置き場所
 
-| 内容 | 場所 |
-|---|---|
-| 文章（`.md`） | 環境設定で指定したフォルダ（既定 `~/Documents/Sate/`） |
-| 設定 | `~/Library/Application Support/club.image.sate/settings.json` |
-| 履歴・検索索引 | `~/Library/Application Support/club.image.sate/sate.db` |
+
+| 内容        | 場所                                                    |
+| --------- | ----------------------------------------------------- |
+| 文章（`.md`） | 環境設定で指定したフォルダー（既定はWindowsの「ドキュメント」内の `Sate`）          |
+| 設定        | `%APPDATA%\io.github.na-gasena.satewin\settings.json` |
+| 履歴・検索索引   | `%APPDATA%\io.github.na-gasena.satewin\sate.db`       |
+
+
+ドキュメントフォルダーがOneDriveなどに移動されている場合は、Windowsで設定されている場所を使います。`%APPDATA%` は通常 `C:\Users\ユーザー名\AppData\Roaming` です。
 
 `.md` に文章として必要な情報が残っています。データベースは検索のためのインデックスと履歴に使用しており、消してもファイルから再生成されます（ただし、履歴は失われます）。
 
