@@ -52,6 +52,28 @@ export function buildFrontMatter(meta: FileMetadata): string {
   return `---\n${YAML.stringify(data)}---\n\n`;
 }
 
+/** Read the header without changing line endings in the user's document body. */
+function readFrontMatter(fileContent: string): {
+  data: Record<string, unknown>;
+  body: string;
+} | null {
+  const opening = /^\uFEFF?---\r?\n/.exec(fileContent);
+  if (!opening) return null;
+  const rest = fileContent.slice(opening[0].length);
+  const closing = /(?:^|\r?\n)---(?:\r?\n|$)/.exec(rest);
+  if (!closing) return null;
+
+  try {
+    const data: unknown = YAML.parse(rest.slice(0, closing.index));
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+    // Sate writes one empty separator line after the header.
+    const body = rest.slice(closing.index + closing[0].length).replace(/^\r?\n/, '');
+    return { data: data as Record<string, unknown>, body };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * ファイル全文からフロントマターを分離して、メタデータと本文に分ける。
  *
@@ -71,23 +93,9 @@ export function parseFrontMatter(fileContent: string): {
   metadata: FileMetadata | null;
   body: string;
 } {
-  if (!fileContent.startsWith('---\n')) {
-    return { metadata: null, body: fileContent };
-  }
-  const end = fileContent.indexOf('\n---\n', 4);
-  if (end === -1) {
-    return { metadata: null, body: fileContent };
-  }
-  const fmRaw = fileContent.slice(4, end);
-  const rest = fileContent.slice(end + 5); // skip '\n---\n'
-  const body = rest.startsWith('\n') ? rest.slice(1) : rest;
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = YAML.parse(fmRaw);
-  } catch {
-    return { metadata: null, body: fileContent };
-  }
+  const front = readFrontMatter(fileContent);
+  if (!front) return { metadata: null, body: fileContent };
+  const { data: parsed, body } = front;
 
   if (!parsed || typeof parsed.uuid !== 'string' || !parsed.created || !parsed.updated) {
     return { metadata: null, body: fileContent };
@@ -118,6 +126,28 @@ export function parseFrontMatter(fileContent: string): {
     },
     body,
   };
+}
+
+/** Pure reconciliation step, shared by file imports and portability tests. */
+export function prepareFrontMatter(
+  fileContent: string,
+  dates: { createdAt: string; updatedAt: string },
+): { metadata: FileMetadata; body: string; content: string; injected: boolean } {
+  const parsed = parseFrontMatter(fileContent);
+  if (parsed.metadata) {
+    return { metadata: parsed.metadata, body: parsed.body, content: fileContent, injected: false };
+  }
+
+  const front = readFrontMatter(fileContent);
+  const data = { ...(front?.data ?? {}) };
+  const body = front?.body ?? fileContent;
+  if (typeof data.uuid !== 'string' || !data.uuid) data.uuid = crypto.randomUUID();
+  if (typeof data.created !== 'string' || !data.created) data.created = dates.createdAt;
+  if (typeof data.updated !== 'string' || !data.updated) data.updated = dates.updatedAt;
+  const content = `---\n${YAML.stringify(data)}---\n\n${body}`;
+  const completed = parseFrontMatter(content);
+  if (!completed.metadata) throw new Error('Failed to prepare document metadata');
+  return { metadata: completed.metadata, body, content, injected: true };
 }
 
 /**

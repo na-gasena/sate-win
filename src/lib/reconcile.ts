@@ -21,9 +21,10 @@
  */
 
 import { readDir, readTextFile, writeTextFile, stat } from '@tauri-apps/plugin-fs';
-import YAML from 'yaml';
+import { join } from '@tauri-apps/api/path';
 import {
   parseFrontMatter,
+  prepareFrontMatter,
   extractFirstLine,
   type FileMetadata,
 } from './frontmatter';
@@ -69,58 +70,12 @@ async function ensureFrontMatter(
   const createdDate = birthtime ?? mtime ?? now;
   const updatedDate = mtime ?? birthtime ?? now;
 
-  // 既存 YAML フロントマターがあるか確認（Obsidian の tags 等を壊さないため）
-  let existingYaml: Record<string, unknown> | null = null;
-  let body = fileContent;
-  if (fileContent.startsWith('---\n')) {
-    const end = fileContent.indexOf('\n---\n', 4);
-    if (end !== -1) {
-      const fmRaw = fileContent.slice(4, end);
-      try {
-        const p = YAML.parse(fmRaw);
-        if (p && typeof p === 'object' && !Array.isArray(p)) {
-          existingYaml = p as Record<string, unknown>;
-          const rest = fileContent.slice(end + 5);
-          body = rest.startsWith('\n') ? rest.slice(1) : rest;
-        }
-      } catch {
-        // YAML 不正 → 既存ブロックは無視して先頭に新規追加する
-      }
-    }
-  }
-
-  // Sate に必要なフィールドを既存 YAML に上書き／追加。
-  // 既存に uuid があれば再利用（同じファイルを再度 reconcile しても ID が変わらない）。
-  const newYaml: Record<string, unknown> = { ...(existingYaml ?? {}) };
-  const uuid =
-    typeof newYaml.uuid === 'string' && newYaml.uuid
-      ? newYaml.uuid
-      : crypto.randomUUID();
-  const createdStr =
-    typeof newYaml.created === 'string' && newYaml.created
-      ? newYaml.created
-      : createdDate.toISOString();
-  const updatedStr =
-    typeof newYaml.updated === 'string' && newYaml.updated
-      ? newYaml.updated
-      : updatedDate.toISOString();
-
-  newYaml.uuid = uuid;
-  newYaml.created = createdStr;
-  newYaml.updated = updatedStr;
-
-  const newText = `---\n${YAML.stringify(newYaml)}---\n\n${body}`;
-  await writeTextFile(filePath, newText);
-
-  const metadata: FileMetadata = {
-    uuid,
-    createdAt: createdStr,
-    updatedAt: updatedStr,
-    title: typeof newYaml.title === 'string' ? newYaml.title : null,
-    memos: [],
-    private: newYaml.private === true,
-  };
-  return { metadata, body, injected: true };
+  const prepared = prepareFrontMatter(fileContent, {
+    createdAt: createdDate.toISOString(),
+    updatedAt: updatedDate.toISOString(),
+  });
+  if (prepared.injected) await writeTextFile(filePath, prepared.content);
+  return prepared;
 }
 
 export async function reconcile(vaultPath: string): Promise<void> {
@@ -140,7 +95,7 @@ export async function reconcile(vaultPath: string): Promise<void> {
 
   for (const entry of mdFiles) {
     try {
-      const filePath = `${vaultPath}/${entry.name}`;
+      const filePath = await join(vaultPath, entry.name);
       const text = await readTextFile(filePath);
 
       // フロントマターが無ければ注入する。注入後は parsed と同じ形で返ってくる。
